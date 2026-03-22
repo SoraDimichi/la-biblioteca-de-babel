@@ -1,5 +1,4 @@
 import { Application, Container } from "pixi.js";
-import { initTextures } from "@/rendering/assets";
 import { InputSystem } from "@/systems/input";
 import { CameraSystem } from "@/systems/camera";
 import { WorldManager } from "@/systems/world-manager";
@@ -70,8 +69,6 @@ export class Game {
   }
 
   start() {
-    initTextures(this.app.renderer);
-
     this.app.ticker.add(({ deltaTime }) => {
       this.update(deltaTime);
     });
