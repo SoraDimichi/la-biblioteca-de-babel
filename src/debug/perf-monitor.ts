@@ -2,10 +2,9 @@ import { RENDER_WIDTH } from "@/config";
 
 export class PerfMonitor {
   visible = false;
-  private fpsHistory: number[] = [];
-  private lastTime = performance.now();
   private frameCount = 0;
   private currentFps = 0;
+  private lastTime = performance.now();
 
   constructor() {
     window.addEventListener("keydown", (e) => {
@@ -30,11 +29,10 @@ export class PerfMonitor {
     if (!this.visible) return;
 
     ctx.fillStyle = "rgba(0,0,0,0.7)";
-    ctx.fillRect(RENDER_WIDTH - 60, 0, 60, 20);
-
+    ctx.fillRect(RENDER_WIDTH - 70, 0, 70, 22);
     ctx.fillStyle = "#00ff00";
-    ctx.font = "5px monospace";
-    ctx.fillText(`FPS: ${this.currentFps}`, RENDER_WIDTH - 56, 7);
-    ctx.fillText(`Cache: ${cacheSize}`, RENDER_WIDTH - 56, 14);
+    ctx.font = "6px monospace";
+    ctx.fillText(`FPS: ${this.currentFps}`, RENDER_WIDTH - 66, 8);
+    ctx.fillText(`Cache: ${cacheSize}`, RENDER_WIDTH - 66, 18);
   }
 }

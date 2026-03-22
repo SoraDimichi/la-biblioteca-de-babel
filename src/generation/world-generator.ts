@@ -3,7 +3,7 @@ import {
   SHELVES_PER_WALL,
   BOOKS_PER_SHELF,
   STEPS_PER_FLOOR,
-  VIEW_DISTANCE,
+  VIEW_STEPS,
   BOOK_SPINE_COLORS,
 } from "@/config";
 
@@ -34,13 +34,13 @@ export class WorldGenerator {
 
     // Evict steps outside view range
     for (const [step] of this.cache) {
-      if (Math.abs(step - center) > VIEW_DISTANCE + 5) {
+      if (Math.abs(step - center) > VIEW_STEPS + 5) {
         this.cache.delete(step);
       }
     }
 
     // Pre-generate visible steps
-    for (let offset = -2; offset <= VIEW_DISTANCE; offset++) {
+    for (let offset = -2; offset <= VIEW_STEPS; offset++) {
       const step = center + offset;
       if (!this.cache.has(step)) {
         this.cache.set(step, this.generateStep(step));

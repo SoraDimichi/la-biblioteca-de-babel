@@ -1,5 +1,5 @@
 import { Game } from "@/game";
-import { RENDER_WIDTH, RENDER_HEIGHT, COLOR_BG } from "@/config";
+import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 function bootstrap() {
   // Display canvas (fills the window)
@@ -36,7 +36,7 @@ function bootstrap() {
     game.render();
 
     // Scale render canvas to display
-    displayCtx.fillStyle = COLOR_BG;
+    displayCtx.fillStyle = "#0a0a0f";
     displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
 
     // Maintain aspect ratio
