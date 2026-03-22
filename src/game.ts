@@ -35,19 +35,21 @@ export class Game {
     this.lastDt = dt;
     this.perfMonitor.update();
 
-    // F3 toggle perf monitor
-    if (this.input.wasJustPressed("F3")) {
-      this.perfMonitor.toggle();
-    }
+    if (this.input.wasJustPressed("F3")) this.perfMonitor.toggle();
 
+    // Book mode: A/D flip pages, Escape closes and re-locks pointer
     if (this.bookViewer.visible) {
-      if (this.input.wasJustPressed("Escape")) this.bookViewer.close();
-      if (this.input.wasJustPressed("ArrowRight")) this.bookViewer.flipPage(2);
-      if (this.input.wasJustPressed("ArrowLeft")) this.bookViewer.flipPage(-2);
+      if (this.input.wasJustPressed("Escape")) {
+        this.bookViewer.close();
+        this.input.requestLock();
+      }
+      if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);
+      if (this.input.wasJustPressed("KeyA")) this.bookViewer.flipPage(-2);
       this.input.endFrame();
       return;
     }
 
+    // Tower mode
     this.player.update(dt, this.input);
 
     if (this.input.consumeClick()) {
@@ -55,6 +57,7 @@ export class Game {
       if (hit) {
         const addr = bookAddressFromWorldStep(hit.worldStep, hit.shelf, hit.slot);
         this.bookViewer.open(addr);
+        document.exitPointerLock();
       }
     }
 
@@ -65,16 +68,12 @@ export class Game {
     const { w, h } = this.getSize();
     const ctx = this.ctx;
 
-    if (this.bookViewer.visible) {
-      this.bookViewer.render(ctx, w, h);
-      return;
-    }
-
+    // Always render the tower (visible behind book overlay)
     this.renderer.render(ctx, w, h, this.player, this.world, this.lastDt);
     this.hud.render(ctx, w, h, this.player);
     this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
 
-    if (!this.input.isLocked) {
+    if (!this.input.isLocked && !this.bookViewer.visible) {
       ctx.fillStyle = "rgba(10,10,15,0.6)";
       ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = "#d4c5a9";

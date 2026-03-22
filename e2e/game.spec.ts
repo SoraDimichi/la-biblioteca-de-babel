@@ -91,6 +91,46 @@ test.describe("Library of Babel", () => {
     await page.screenshot({ path: "e2e/screenshots/10-opposite-wall.png" });
   });
 
+  test("A/D and Escape keys don't crash the game", async ({ page }) => {
+    // Pointer lock can't activate in headless, so we can't open the book viewer.
+    // Instead verify A/D/Escape keys work without crashing (they strafe in game mode).
+    await page.screenshot({ path: "e2e/screenshots/11-before-keys.png" });
+
+    // D = strafe right in game mode
+    await page.keyboard.down("KeyD");
+    await page.waitForTimeout(500);
+    await page.keyboard.up("KeyD");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/12-after-d.png" });
+
+    // A = strafe left
+    await page.keyboard.down("KeyA");
+    await page.waitForTimeout(500);
+    await page.keyboard.up("KeyA");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/13-after-a.png" });
+
+    // Escape should not crash
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: "e2e/screenshots/14-after-escape.png" });
+
+    // Verify still rendering
+    const ok = await page.evaluate(() => {
+      const c = document.querySelector("canvas");
+      if (!c) return false;
+      const ctx = c.getContext("2d");
+      if (!ctx) return false;
+      const data = ctx.getImageData(0, 0, c.width, c.height).data;
+      const colors = new Set<string>();
+      for (let i = 0; i < data.length; i += 400) {
+        colors.add(`${data[i]},${data[i+1]},${data[i+2]}`);
+      }
+      return colors.size > 3;
+    });
+    expect(ok).toBe(true);
+  });
+
   test("no console errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (msg) => {

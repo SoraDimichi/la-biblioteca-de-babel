@@ -5,8 +5,11 @@ export class InputSystem {
   private _mouseDX = 0;
   private _mouseDY = 0;
   private locked = false;
+  private canvas: HTMLCanvasElement;
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);
       this.keys.add(e.code);
@@ -80,6 +83,10 @@ export class InputSystem {
 
   get isLocked(): boolean {
     return this.locked;
+  }
+
+  requestLock() {
+    this.canvas.requestPointerLock();
   }
 
   endFrame() {
