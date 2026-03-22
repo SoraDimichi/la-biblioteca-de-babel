@@ -1,6 +1,6 @@
 import type { InputSystem } from "@/systems/input";
 import { RENDER_HEIGHT } from "@/config";
-import { isInsideHex, HEX_CX, HEX_CY } from "@/rendering/renderer";
+import { isInsideHex, HEX_CX, HEX_CY, getAngleFromCenter } from "@/rendering/renderer";
 
 const MOVE_SPEED = 3.5;
 const MOUSE_SENSITIVITY = 0.003;
@@ -13,6 +13,8 @@ export class PlayerSystem {
   planeX = 0;
   planeY = 0.66;
   pitch = 0;
+  floor = 0; // spiral revolution counter
+  private prevAngle = 0;
 
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
@@ -21,6 +23,8 @@ export class PlayerSystem {
     if (mouse.dx !== 0) this.rotate(mouse.dx * MOUSE_SENSITIVITY);
     this.pitch -= mouse.dy * 1.5;
     this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
+
+    const oldAngle = getAngleFromCenter(this.posX, this.posY);
 
     // W/S forward/back
     const fwd = input.forward;
@@ -41,6 +45,21 @@ export class PlayerSystem {
       if (isInsideHex(nx, this.posY)) this.posX = nx;
       if (isInsideHex(this.posX, ny)) this.posY = ny;
     }
+
+    // Track floor: detect when player crosses the 0/2π boundary
+    const newAngle = getAngleFromCenter(this.posX, this.posY);
+    const delta = newAngle - oldAngle;
+
+    // Large negative jump = crossed 0 going clockwise (up)
+    if (delta < -Math.PI) {
+      this.floor++;
+    }
+    // Large positive jump = crossed 0 going counter-clockwise (down)
+    if (delta > Math.PI) {
+      this.floor--;
+    }
+
+    this.prevAngle = newAngle;
   }
 
   private rotate(angle: number) {

@@ -94,15 +94,21 @@ function raySegIntersect(
   return { t, u };
 }
 
-// Floor height: rises from walls (0) to center (peak)
-const FLOOR_PEAK = 4.0; // height at center
+// Spiral floor: height rises with angle around center.
+// One full revolution (2π) = one floor height.
+const FLOOR_HEIGHT = 3.0; // height gained per full revolution
 
-function getFloorHeight(px: number, py: number): number {
+function getAngleFromCenter(px: number, py: number): number {
   const dx = px - HEX_CX;
   const dy = py - HEX_CY;
-  const distFromCenter = Math.sqrt(dx * dx + dy * dy);
-  const t = 1 - Math.min(1, distFromCenter / (HEX_R - 0.5));
-  return t * FLOOR_PEAK;
+  const angle = Math.atan2(dy, dx);
+  return ((angle + Math.PI * 2) % (Math.PI * 2)); // 0 to 2π
+}
+
+// Floor height at a point, given a reference floor level
+function getFloorHeight(px: number, py: number, playerFloor: number): number {
+  const angle = getAngleFromCenter(px, py);
+  return playerFloor * FLOOR_HEIGHT + (angle / (Math.PI * 2)) * FLOOR_HEIGHT;
 }
 
 // Wall colors: alternate light/dark per wall for depth
@@ -136,10 +142,9 @@ export class Renderer {
     const w = RENDER_WIDTH;
     const h = RENDER_HEIGHT;
 
-    // Floor & ceiling — horizon shifts with player height on slope
-    const playerH = getFloorHeight(player.posX, player.posY);
-    const horizonShift = Math.round(playerH * 15); // higher = see more floor
-    const horizon = Math.floor(h / 2 + pitch - horizonShift);
+    // Floor & ceiling
+    const playerH = getFloorHeight(player.posX, player.posY, player.floor);
+    const horizon = Math.floor(h / 2 + pitch);
     ctx.fillStyle = `rgb(14,12,10)`;
     ctx.fillRect(0, 0, w, Math.max(0, horizon));
     ctx.fillStyle = `rgb(30,24,17)`;
@@ -177,12 +182,11 @@ export class Renderer {
       const perpDist = nearestT;
       const lineHeight = Math.floor(h / Math.max(0.01, perpDist));
 
-      // Floor height at hit point and at player
+      // Spiral height: wall hit point vs player
       const hitX = player.posX + rayDirX * nearestT;
       const hitY = player.posY + rayDirY * nearestT;
-      const wallFloorH = getFloorHeight(hitX, hitY);
-      const playerFloorH = getFloorHeight(player.posX, player.posY);
-      const heightShift = Math.round((wallFloorH - playerFloorH) * lineHeight * 0.4);
+      const wallH = getFloorHeight(hitX, hitY, player.floor);
+      const heightShift = Math.round((wallH - playerH) * lineHeight * 0.4);
 
       const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitch - heightShift));
       const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitch - heightShift));
@@ -299,4 +303,4 @@ function rgb(c: RGB): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export { isInsideHex, HEX_CX, HEX_CY, getFloorHeight };
+export { isInsideHex, HEX_CX, HEX_CY, getAngleFromCenter };
