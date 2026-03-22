@@ -1,7 +1,7 @@
 import {
   RENDER_WIDTH, RENDER_HEIGHT, COLOR_BG,
   FOV, EYE_HEIGHT, CORRIDOR_WIDTH, CURVE_PER_STEP, STEP_RISE,
-  VIEW_STEPS, FOG_START_FRAC, PITCH_LIMIT,
+  VIEW_STEPS, FOG_START_FRAC,
   COLOR_FLOOR, COLOR_FLOOR_ALT, COLOR_CEILING,
   COLOR_WALL_OUTER, COLOR_WALL_INNER, COLOR_SHELF, COLOR_RAILING,
   SHELVES_PER_WALL, BOOK_SPINE_COLORS, STEPS_PER_FLOOR,
@@ -19,13 +19,15 @@ export interface BookHit {
 }
 
 interface Projected {
-  sx: number; // screen x
-  sy: number; // screen y
-  depth: number; // for fog
+  sx: number;
+  sy: number;
+  depth: number;
+  behind: boolean;
 }
 
 const CX = RENDER_WIDTH / 2;
 const CY = RENDER_HEIGHT / 2;
+const FOCAL = (RENDER_WIDTH * 0.5) / Math.tan(FOV / 2);
 
 export class Renderer {
   private flickerTime = 0;
@@ -43,89 +45,79 @@ export class Renderer {
     this.flicker = 0.97 + Math.sin(this.flickerTime * 2.3) * 0.03;
     this.bookUnderCrosshair = null;
 
-    const pitchOffset = -player.pitch * (RENDER_HEIGHT * 0.5);
-    const bobOffset = player.headBob * RENDER_HEIGHT;
     const frac = player.position - Math.floor(player.position);
+    const cosYaw = Math.cos(-player.angle);
+    const sinYaw = Math.sin(-player.angle);
+    const cosPitch = Math.cos(-player.pitch);
+    const sinPitch = Math.sin(-player.pitch);
 
-    // Draw corridor segments from far to near
+    // Draw corridor segments from far to near (painter's algorithm)
     for (let i = VIEW_STEPS; i >= 0; i--) {
-      const stepNear = i;
-      const stepFar = i + 1;
-      const worldStepNear = Math.floor(player.position) + stepNear;
+      const worldStepNear = Math.floor(player.position) + i;
 
-      // Corridor geometry: each step curves left by CURVE_PER_STEP
-      // We compute positions relative to the player, in a local coordinate system
-      // where player faces +Z, +X is right
-      const nearPts = this.getStepCorners(stepNear - frac, player.angle);
-      const farPts = this.getStepCorners(stepFar - frac, player.angle);
+      // Get corridor corners in world space (relative to player position)
+      const nearCorners = this.corridorCornersWorld(i - frac);
+      const farCorners = this.corridorCornersWorld(i + 1 - frac);
 
-      // Height of near and far steps (spiral rises)
-      const nearFloorY = (stepNear - frac) * STEP_RISE;
-      const farFloorY = (stepFar - frac) * STEP_RISE;
-      const ceilH = 3.5; // ceiling height above floor
+      const nearFloorH = (i - frac) * STEP_RISE;
+      const farFloorH = (i + 1 - frac) * STEP_RISE;
+      const ceilH = 3.5;
 
-      // Project all 4 corners at floor and ceiling level
-      const nearLeftFloor = this.project(nearPts.innerX, nearFloorY, nearPts.z, pitchOffset + bobOffset);
-      const nearRightFloor = this.project(nearPts.outerX, nearFloorY, nearPts.z, pitchOffset + bobOffset);
-      const farLeftFloor = this.project(farPts.innerX, farFloorY, farPts.z, pitchOffset + bobOffset);
-      const farRightFloor = this.project(farPts.outerX, farFloorY, farPts.z, pitchOffset + bobOffset);
+      // Transform to view space (rotate by camera yaw & pitch) then project
+      const nlf = this.viewProject(nearCorners.ix, nearFloorH, nearCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const nrf = this.viewProject(nearCorners.ox, nearFloorH, nearCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const flf = this.viewProject(farCorners.ix, farFloorH, farCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const frf = this.viewProject(farCorners.ox, farFloorH, farCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
 
-      const nearLeftCeil = this.project(nearPts.innerX, nearFloorY + ceilH, nearPts.z, pitchOffset + bobOffset);
-      const nearRightCeil = this.project(nearPts.outerX, nearFloorY + ceilH, nearPts.z, pitchOffset + bobOffset);
-      const farLeftCeil = this.project(farPts.innerX, farFloorY + ceilH, farPts.z, pitchOffset + bobOffset);
-      const farRightCeil = this.project(farPts.outerX, farFloorY + ceilH, farPts.z, pitchOffset + bobOffset);
+      const nlc = this.viewProject(nearCorners.ix, nearFloorH + ceilH, nearCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const nrc = this.viewProject(nearCorners.ox, nearFloorH + ceilH, nearCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const flc = this.viewProject(farCorners.ix, farFloorH + ceilH, farCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
+      const frc = this.viewProject(farCorners.ox, farFloorH + ceilH, farCorners.z, cosYaw, sinYaw, cosPitch, sinPitch, player.headBob);
 
-      // Skip if behind camera
-      if (nearPts.z <= 0.1 && farPts.z <= 0.1) continue;
-      if (farPts.z <= 0.1) continue;
+      // Skip if entirely behind camera
+      if (nlf.behind && nrf.behind && flf.behind && frf.behind) continue;
+      if (flf.behind && frf.behind) continue;
 
-      const avgDepth = (nearPts.z + farPts.z) / 2;
+      const avgDepth = Math.max(0.1, (nlf.depth + flf.depth) / 2);
       const fog = this.fogFactor(avgDepth);
 
-      // Floor (quad between near and far, left and right floor edges)
+      // Floor
       const floorColor = (worldStepNear % 2 === 0) ? COLOR_FLOOR : COLOR_FLOOR_ALT;
-      this.fillQuad(ctx, nearLeftFloor, nearRightFloor, farRightFloor, farLeftFloor,
-        this.fogged(floorColor, fog));
+      this.fillQuad(ctx, nlf, nrf, frf, flf, this.fogged(floorColor, fog));
 
       // Ceiling
-      this.fillQuad(ctx, nearLeftCeil, nearRightCeil, farRightCeil, farLeftCeil,
-        this.fogged(COLOR_CEILING, fog));
+      this.fillQuad(ctx, nlc, nrc, frc, flc, this.fogged(COLOR_CEILING, fog));
 
-      // Inner wall (void side) — left wall
-      this.fillQuad(ctx, nearLeftFloor, farLeftFloor, farLeftCeil, nearLeftCeil,
-        this.fogged(COLOR_WALL_INNER, fog * 1.1));
+      // Inner wall (void side)
+      this.fillQuad(ctx, nlf, flf, flc, nlc, this.fogged(COLOR_WALL_INNER, fog * 1.1));
 
-      // Railing line on inner wall top edge
-      if (nearLeftCeil.depth > 0 && farLeftCeil.depth > 0) {
+      // Railing on inner wall
+      if (!nlc.behind && !flc.behind) {
         ctx.strokeStyle = rgb(this.fogged(COLOR_RAILING, fog));
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(nearLeftCeil.sx, nearLeftCeil.sy);
-        ctx.lineTo(farLeftCeil.sx, farLeftCeil.sy);
+        ctx.moveTo(nlc.sx, nlc.sy);
+        ctx.lineTo(flc.sx, flc.sy);
         ctx.stroke();
       }
 
-      // Outer wall (bookshelf side) — right wall
+      // Outer wall (bookshelves)
       const wallColor = this.fogged(COLOR_WALL_OUTER, fog);
-      this.fillQuad(ctx, nearRightFloor, farRightFloor, farRightCeil, nearRightCeil, wallColor);
+      this.fillQuad(ctx, nrf, frf, frc, nrc, wallColor);
 
-      // Step edge line (the rise of each stair step)
-      if (nearPts.z > 0.1) {
+      // Step edge
+      if (!nlf.behind && !nrf.behind) {
         ctx.strokeStyle = rgb(this.fogged(COLOR_FLOOR_ALT, fog * 0.7));
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(nearLeftFloor.sx, nearLeftFloor.sy);
-        ctx.lineTo(nearRightFloor.sx, nearRightFloor.sy);
+        ctx.moveTo(nlf.sx, nlf.sy);
+        ctx.lineTo(nrf.sx, nrf.sy);
         ctx.stroke();
       }
 
-      // Draw shelves and books on outer wall
-      if (avgDepth < 10) {
-        this.drawShelvesOnWall(
-          ctx, world, worldStepNear,
-          nearRightFloor, nearRightCeil, farRightFloor, farRightCeil,
-          fog, avgDepth
-        );
+      // Shelves and books on outer wall
+      if (avgDepth < 10 && !nrf.behind && !frf.behind) {
+        this.drawShelvesOnWall(ctx, world, worldStepNear, nrf, nrc, frf, frc, fog, avgDepth);
       }
     }
 
@@ -133,33 +125,59 @@ export class Renderer {
     ctx.fillStyle = "rgba(212,197,169,0.5)";
     ctx.fillRect(CX - 4, CY, 9, 1);
     ctx.fillRect(CX, CY - 4, 1, 9);
+
+    // Book info near crosshair
+    this.drawBookTooltip(ctx);
   }
 
-  private getStepCorners(stepOffset: number, playerAngle: number) {
-    // The spiral curves left. Each step ahead curves by CURVE_PER_STEP.
-    const totalAngle = stepOffset * CURVE_PER_STEP + playerAngle;
-    const dist = Math.max(0.01, stepOffset * 1.8); // depth along corridor
+  /** Compute corridor inner/outer X and Z in world space for a given step offset */
+  private corridorCornersWorld(stepOffset: number) {
+    // The spiral curves: each step is rotated by CURVE_PER_STEP around the center shaft.
+    // In world coords relative to the player, step 0 is at the player's feet,
+    // step N is N steps ahead along the curving corridor.
+    const angle = stepOffset * CURVE_PER_STEP;
+    const forwardDist = stepOffset * 1.8;
 
-    // The corridor curves: offset X based on accumulated angle
-    const curveX = Math.sin(totalAngle) * stepOffset * 0.4;
+    // Curve offset: the corridor bends left
+    const curveX = -Math.sin(angle) * stepOffset * 0.5;
 
-    const innerRadius = 1.0;
-    const outerRadius = innerRadius + CORRIDOR_WIDTH;
+    const innerR = 1.0;
+    const outerR = innerR + CORRIDOR_WIDTH;
 
     return {
-      innerX: curveX - innerRadius,
-      outerX: curveX + outerRadius,
-      z: dist,
+      ix: curveX - innerR, // inner wall X
+      ox: curveX + outerR, // outer wall X
+      z: Math.max(0.01, forwardDist + Math.cos(angle) * stepOffset * 0.1),
     };
   }
 
-  private project(x: number, y: number, z: number, pitchOff: number): Projected {
-    if (z <= 0.01) z = 0.01;
-    const scale = (RENDER_WIDTH * 0.5) / (z * Math.tan(FOV / 2));
+  /** Transform a world-space point by camera yaw+pitch, then perspective project */
+  private viewProject(
+    wx: number, wy: number, wz: number,
+    cosYaw: number, sinYaw: number,
+    cosPitch: number, sinPitch: number,
+    headBob: number
+  ): Projected {
+    // Yaw rotation (around Y axis): rotates X and Z
+    const rx = wx * cosYaw - wz * sinYaw;
+    const rz = wx * sinYaw + wz * cosYaw;
+
+    // Offset Y by eye height and head bob
+    const ry = wy - EYE_HEIGHT - headBob;
+
+    // Pitch rotation (around X axis): rotates Y and Z
+    const py = ry * cosPitch - rz * sinPitch;
+    const pz = ry * sinPitch + rz * cosPitch;
+
+    if (pz <= 0.01) {
+      return { sx: CX, sy: CY, depth: 0.01, behind: true };
+    }
+
     return {
-      sx: CX + x * scale,
-      sy: CY - (y - EYE_HEIGHT) * scale + pitchOff,
-      depth: z,
+      sx: CX + (rx / pz) * FOCAL,
+      sy: CY - (py / pz) * FOCAL,
+      depth: pz,
+      behind: false,
     };
   }
 
@@ -198,46 +216,37 @@ export class Renderer {
     ctx: CanvasRenderingContext2D,
     world: WorldGenerator,
     worldStep: number,
-    nearBottom: Projected, nearTop: Projected,
-    farBottom: Projected, farTop: Projected,
-    fog: number,
-    depth: number
+    nearBot: Projected, nearTop: Projected,
+    farBot: Projected, farTop: Projected,
+    fog: number, depth: number
   ) {
     const stepData = world.getStep(worldStep);
     if (!stepData) return;
 
-    const shelfCount = SHELVES_PER_WALL;
+    for (let s = 0; s < SHELVES_PER_WALL; s++) {
+      const t0 = (s + 0.3) / (SHELVES_PER_WALL + 0.5);
+      const t1 = (s + 1) / (SHELVES_PER_WALL + 0.5);
 
-    for (let s = 0; s < shelfCount; s++) {
-      const t0 = (s + 0.3) / (shelfCount + 0.5);
-      const t1 = (s + 1) / (shelfCount + 0.5);
+      const shelfNearY = nearBot.sy + (nearTop.sy - nearBot.sy) * t1;
+      const shelfFarY = farBot.sy + (farTop.sy - farBot.sy) * t1;
+      const bookTopNearY = nearBot.sy + (nearTop.sy - nearBot.sy) * t0;
+      const bookTopFarY = farBot.sy + (farTop.sy - farBot.sy) * t0;
 
-      // Interpolate shelf plank position on the wall quad
-      const shelfNearY = nearBottom.sy + (nearTop.sy - nearBottom.sy) * t1;
-      const shelfFarY = farBottom.sy + (farTop.sy - farBottom.sy) * t1;
-      const bookTopNearY = nearBottom.sy + (nearTop.sy - nearBottom.sy) * t0;
-      const bookTopFarY = farBottom.sy + (farTop.sy - farBottom.sy) * t0;
-
-      // Shelf plank line
+      // Shelf plank
       ctx.strokeStyle = rgb(this.fogged(COLOR_SHELF, fog));
       ctx.lineWidth = Math.max(1, 2 / depth);
       ctx.beginPath();
-      ctx.moveTo(nearBottom.sx, shelfNearY);
-      ctx.lineTo(farBottom.sx, shelfFarY);
+      ctx.moveTo(nearBot.sx, shelfNearY);
+      ctx.lineTo(farBot.sx, shelfFarY);
       ctx.stroke();
 
-      // Books on this shelf
       const shelfBooks = stepData.shelves[s];
       if (!shelfBooks || depth > 6) continue;
 
-      const nearBookH = Math.abs(shelfNearY - bookTopNearY);
-      const wallNearX = nearBottom.sx;
-      const wallFarX = farBottom.sx;
-      const wallWidth = Math.abs(wallFarX - wallNearX);
-      const booksTotalWidth = wallWidth;
-
-      let bx = Math.min(wallNearX, wallFarX);
-      const bxEnd = bx + booksTotalWidth;
+      const leftX = Math.min(nearBot.sx, farBot.sx);
+      const wallWidth = Math.abs(farBot.sx - nearBot.sx);
+      let bx = leftX;
+      const bxEnd = leftX + wallWidth;
 
       for (let b = 0; b < shelfBooks.length; b++) {
         const book = shelfBooks[b];
@@ -246,18 +255,16 @@ export class Renderer {
         const bookWidth = Math.max(1, Math.round(book.width * 0.8 / depth));
         if (bx + bookWidth > bxEnd) break;
 
-        // Interpolate Y for this book's X position
-        const tx = wallWidth > 0 ? (bx - Math.min(wallNearX, wallFarX)) / wallWidth : 0;
+        const tx = wallWidth > 0 ? (bx - leftX) / wallWidth : 0;
         const bookTopY = bookTopNearY + (bookTopFarY - bookTopNearY) * tx;
         const bookBotY = shelfNearY + (shelfFarY - shelfNearY) * tx;
+        const topY = Math.min(bookTopY, bookBotY);
         const bookH = Math.max(1, Math.abs(bookBotY - bookTopY));
 
         const color = BOOK_SPINE_COLORS[book.colorIndex];
         if (!color) { bx += bookWidth; continue; }
 
-        // Check crosshair
-        const isHit = CX >= bx && CX < bx + bookWidth &&
-                      CY >= Math.min(bookTopY, bookBotY) && CY < Math.min(bookTopY, bookBotY) + bookH;
+        const isHit = CX >= bx && CX < bx + bookWidth && CY >= topY && CY < topY + bookH;
 
         let drawColor: RGB;
         if (isHit) {
@@ -274,11 +281,18 @@ export class Renderer {
         }
 
         ctx.fillStyle = rgb(drawColor);
-        ctx.fillRect(bx, Math.min(bookTopY, bookBotY), bookWidth, bookH);
-
+        ctx.fillRect(bx, topY, bookWidth, bookH);
         bx += bookWidth + (depth < 2 ? 1 : 0);
       }
     }
+  }
+
+  private drawBookTooltip(ctx: CanvasRenderingContext2D) {
+    const hit = this.bookUnderCrosshair;
+    if (!hit) return;
+    ctx.fillStyle = "rgba(212,197,169,0.8)";
+    ctx.font = "6px monospace";
+    ctx.fillText(`Floor ${hit.floor} · Shelf ${hit.shelf} · Book ${hit.slot}`, CX - 40, CY + 14);
   }
 }
 
