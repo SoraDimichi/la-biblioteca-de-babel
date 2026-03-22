@@ -34,8 +34,8 @@ export class PlayerSystem {
     // A/D strafe
     const strafe = input.strafe;
     if (strafe !== 0) {
-      const sx = this.dirY;
-      const sy = -this.dirX;
+      const sx = -this.dirY;
+      const sy = this.dirX;
       const nx = this.posX + sx * moveSpeed * 0.7 * strafe;
       const ny = this.posY + sy * moveSpeed * 0.7 * strafe;
       if (isInsideHex(nx, this.posY)) this.posX = nx;
