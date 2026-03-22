@@ -22,9 +22,14 @@ export class PlayerSystem {
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
 
-    // --- Mouse rotation (yaw) ---
+    // --- Keyboard rotation (arrow keys, always available) ---
+    let keyRot = 0;
+    if (input.isKeyDown("ArrowLeft")) keyRot += 1;
+    if (input.isKeyDown("ArrowRight")) keyRot -= 1;
+
+    // --- Mouse rotation (yaw, only when pointer locked) ---
     const mouse = input.consumeMouseDelta();
-    const rotAngle = -mouse.dx * ROT_SPEED;
+    const rotAngle = -mouse.dx * ROT_SPEED + keyRot * 2.5 * dt;
 
     if (rotAngle !== 0) {
       const cos = Math.cos(rotAngle);
