@@ -14,21 +14,19 @@ export interface BookHit {
   slot: number;
 }
 
-// Map layout: hexagonal room divided into 6 triangular sectors (pizza slices).
-// 5 sectors = gallery with bookshelves on outer walls.
-// 1 sector = staircase (floor rises toward center).
-// 0 = walkable gallery, 1 = bookshelf wall, 2 = void/dark, 3 = stair wall
+// Map layout: hexagonal room, 6 sides all with bookshelves.
+// Interior divided into 6 triangular stair flights, each rising from wall to center.
+// 0 = walkable (stairs), 1 = bookshelf wall, 2 = void/outside
 const MAP_SIZE = 32;
 const MAP: number[][] = [];
-const FLOOR_H: number[][] = []; // floor height per cell
+const FLOOR_H: number[][] = [];
 const HEX_CX = MAP_SIZE / 2;
 const HEX_CY = MAP_SIZE / 2;
-const HEX_R = 12; // hex radius in cells
-const STAIR_SECTOR = 0; // which of the 6 sectors (0-5) is the staircase
+const HEX_R = 12;
 
 function initMap() {
   for (let y = 0; y < MAP_SIZE; y++) {
-    MAP[y] = new Array(MAP_SIZE).fill(2); // default: void
+    MAP[y] = new Array(MAP_SIZE).fill(2);
     FLOOR_H[y] = new Array(MAP_SIZE).fill(0);
   }
 
@@ -37,48 +35,23 @@ function initMap() {
       const dx = x - HEX_CX + 0.5;
       const dy = y - HEX_CY + 0.5;
 
-      // Hex containment: use max of axial distances (flat-top hex)
       const q = (2 / 3) * dx;
       const r = (-1 / 3) * dx + (Math.sqrt(3) / 3) * dy;
       const hexDist = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
 
-      if (hexDist > HEX_R) continue; // outside hex
+      if (hexDist > HEX_R) continue;
 
-      // Determine which sector (0-5) this cell is in
-      const angle = Math.atan2(dy, dx); // -PI to PI
-      const normAngle = ((angle + Math.PI * 2) % (Math.PI * 2)); // 0 to 2PI
-      const sector = Math.floor(normAngle / (Math.PI / 3)) % 6;
-
-      const isOuterRing = hexDist > HEX_R - 1.5;
       const distFromCenter = Math.sqrt(dx * dx + dy * dy);
 
-      if (sector === STAIR_SECTOR) {
-        // --- Staircase sector ---
-        if (isOuterRing) {
-          MAP[y]![x] = 3; // stair outer wall
-        } else {
-          MAP[y]![x] = 0; // walkable stair
-          // Floor rises from outer edge toward center
-          const t = 1 - (distFromCenter / (HEX_R - 1));
-          FLOOR_H[y]![x] = Math.max(0, t * 3.0); // rises up to 3 units high
-        }
-
-        // Stair sector side walls (the two edges of the pizza slice)
-        const sectorStart = STAIR_SECTOR * (Math.PI / 3);
-        const sectorEnd = (STAIR_SECTOR + 1) * (Math.PI / 3);
-        const angleToBoundary1 = Math.abs(normAngle - sectorStart);
-        const angleToBoundary2 = Math.abs(normAngle - sectorEnd);
-        const edgeThreshold = 0.15;
-        if ((angleToBoundary1 < edgeThreshold || angleToBoundary2 < edgeThreshold) && !isOuterRing) {
-          MAP[y]![x] = 3; // side wall of staircase
-        }
+      if (hexDist > HEX_R - 1.5) {
+        // Outer ring: bookshelf walls on all 6 sides
+        MAP[y]![x] = 1;
       } else {
-        // --- Gallery sector ---
-        if (isOuterRing) {
-          MAP[y]![x] = 1; // bookshelf wall
-        } else {
-          MAP[y]![x] = 0; // walkable gallery floor
-        }
+        // Interior: walkable stairs
+        MAP[y]![x] = 0;
+        // Floor rises from outer wall toward center
+        const t = 1 - distFromCenter / (HEX_R - 1);
+        FLOOR_H[y]![x] = Math.max(0, t * 4.0);
       }
     }
   }
@@ -96,8 +69,7 @@ function getFloorHeight(x: number, y: number): number {
 // Wall colors
 const WALL_COLORS: Record<number, { light: RGB; dark: RGB }> = {
   1: { light: [61, 43, 31], dark: [42, 30, 22] },   // bookshelf wall (wood)
-  2: { light: [12, 12, 20], dark: [8, 8, 15] },      // void/dark
-  3: { light: [50, 42, 35], dark: [38, 32, 26] },    // stair wall (stone)
+  2: { light: [12, 12, 20], dark: [8, 8, 15] },      // void/outside
 };
 
 const CX = Math.floor(RENDER_WIDTH / 2);
