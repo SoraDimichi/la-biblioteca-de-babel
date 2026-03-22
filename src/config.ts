@@ -1,26 +1,9 @@
 // Logical render resolution (scaled up to fill screen)
-export const RENDER_WIDTH = 400;
-export const RENDER_HEIGHT = 250;
+export const RENDER_WIDTH = 640;
+export const RENDER_HEIGHT = 400;
 
-// Spiral geometry
-export const SPIRAL_RADIUS = 8; // radius of the spiral path in world units
-export const CORRIDOR_WIDTH = 3; // width between inner and outer wall
-export const STEP_RISE = 0.4; // height gained per step along spiral
-export const STEPS_PER_FLOOR = 24; // steps for one full revolution
-export const CURVE_PER_STEP = (Math.PI * 2) / STEPS_PER_FLOOR; // angular turn per step
-
-// Camera / player
-export const EYE_HEIGHT = 1.5; // player eye height in world units
-export const MOVE_SPEED = 3.0; // steps per second
-export const MOUSE_SENSITIVITY = 0.002;
-export const HEAD_BOB_AMPLITUDE = 0.03;
-export const HEAD_BOB_FREQUENCY = 4;
-export const FOV = 1.2; // field of view in radians (~70 degrees)
-export const PITCH_LIMIT = 1.0;
-
-// View
-export const VIEW_STEPS = 16; // how many corridor segments visible ahead
-export const FOG_START_FRAC = 0.5;
+// World
+export const STEPS_PER_FLOOR = 24;
 
 // Shelves & books
 export const SHELVES_PER_WALL = 5;
@@ -31,16 +14,6 @@ export const BABEL_ALPHABET = "abcdefghijklmnopqrstuv ,.";
 export const PAGES_PER_BOOK = 410;
 export const LINES_PER_PAGE = 40;
 export const CHARS_PER_LINE = 80;
-
-// Colors (0-1 floats for easier math)
-export const COLOR_BG: RGB = [10, 10, 15];
-export const COLOR_FLOOR: RGB = [42, 34, 24];
-export const COLOR_FLOOR_ALT: RGB = [36, 28, 20]; // alternating step
-export const COLOR_CEILING: RGB = [22, 20, 14];
-export const COLOR_WALL_OUTER: RGB = [61, 43, 31]; // bookshelf wall
-export const COLOR_WALL_INNER: RGB = [18, 18, 30]; // void wall
-export const COLOR_SHELF: RGB = [92, 64, 51];
-export const COLOR_RAILING: RGB = [30, 30, 50];
 
 export type RGB = [number, number, number];
 

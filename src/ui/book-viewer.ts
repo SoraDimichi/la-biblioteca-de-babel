@@ -12,10 +12,7 @@ export class BookViewer {
   open(address: BookAddress) {
     this.bookAddress = address;
     this.bookSeed = seedFromAddress(
-      address.floor,
-      address.segment,
-      address.shelf,
-      address.slot
+      address.floor, address.segment, address.shelf, address.slot
     );
     this.currentPage = 0;
     this.visible = true;
@@ -35,36 +32,30 @@ export class BookViewer {
   render(ctx: CanvasRenderingContext2D) {
     if (!this.visible || !this.bookAddress) return;
 
-    // Dark overlay
-    ctx.fillStyle = "rgba(28, 23, 16, 0.95)";
+    ctx.fillStyle = "rgba(28, 23, 16, 0.97)";
     ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
 
-    // Header
     const addr = this.bookAddress;
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "6px monospace";
+    ctx.font = "14px monospace";
     ctx.fillText(
       `Floor ${addr.floor} Seg ${addr.segment} — Shelf ${addr.shelf}, Book ${addr.slot}`,
-      8, 10
+      20, 24
     );
 
-    // Page content
     ctx.fillStyle = "#8b7d6b";
-    ctx.font = "4px monospace";
+    ctx.font = "10px monospace";
 
     const leftPage = generatePage(this.bookSeed, this.currentPage);
     const leftLines = leftPage.split("\n");
-
-    const lineHeight = 4.5;
-    const startY = 18;
-    const maxLines = Math.min(leftLines.length, 38);
+    const lineHeight = 9;
+    const startY = 44;
+    const maxLines = Math.min(leftLines.length, Math.floor((RENDER_HEIGHT - 60) / lineHeight));
 
     for (let i = 0; i < maxLines; i++) {
       const line = leftLines[i];
       if (!line) continue;
-      // Truncate to fit screen width
-      const displayLine = line.substring(0, 40);
-      ctx.fillText(displayLine, 8, startY + i * lineHeight);
+      ctx.fillText(line.substring(0, 50), 20, startY + i * lineHeight);
     }
 
     // Right page
@@ -72,25 +63,24 @@ export class BookViewer {
     if (rightPageIdx < PAGES_PER_BOOK) {
       const rightPage = generatePage(this.bookSeed, rightPageIdx);
       const rightLines = rightPage.split("\n");
-
       for (let i = 0; i < maxLines; i++) {
         const line = rightLines[i];
         if (!line) continue;
-        const displayLine = line.substring(0, 40);
-        ctx.fillText(displayLine, RENDER_WIDTH / 2 + 4, startY + i * lineHeight);
+        ctx.fillText(line.substring(0, 50), RENDER_WIDTH / 2 + 10, startY + i * lineHeight);
       }
     }
 
-    // Divider
     ctx.fillStyle = "#3a3020";
-    ctx.fillRect(RENDER_WIDTH / 2, 14, 1, RENDER_HEIGHT - 20);
+    ctx.fillRect(RENDER_WIDTH / 2, 34, 1, RENDER_HEIGHT - 50);
 
-    // Page numbers
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "5px monospace";
+    ctx.font = "12px monospace";
     ctx.fillText(
       `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`,
-      RENDER_WIDTH / 2 - 20, RENDER_HEIGHT - 4
+      RENDER_WIDTH / 2 - 40, RENDER_HEIGHT - 10
     );
+
+    ctx.font = "10px monospace";
+    ctx.fillText("← →  flip pages  ·  Esc  close", RENDER_WIDTH / 2 - 100, RENDER_HEIGHT - 26);
   }
 }

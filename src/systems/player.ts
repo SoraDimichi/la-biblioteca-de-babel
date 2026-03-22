@@ -1,47 +1,80 @@
-import {
-  MOVE_SPEED,
-  MOUSE_SENSITIVITY,
-  HEAD_BOB_AMPLITUDE,
-  HEAD_BOB_FREQUENCY,
-  STEPS_PER_FLOOR,
-  PITCH_LIMIT,
-} from "@/config";
 import type { InputSystem } from "@/systems/input";
+import { MAP, MAP_SIZE } from "@/rendering/renderer";
+
+const MOVE_SPEED = 5.0;
+const ROT_SPEED = 0.003; // mouse sensitivity
+const COLLISION_MARGIN = 0.3;
 
 export class PlayerSystem {
-  position = 0; // distance along spiral in steps
-  angle = 0; // horizontal look (yaw) - radians, 0 = forward
-  pitch = 0; // vertical look - radians, 0 = level
-  headBob = 0;
-  private bobTime = 0;
+  // Position on the 2D map
+  posX = 16;
+  posY = 16;
+
+  // Direction vector (unit vector pointing where player looks)
+  dirX = -1;
+  dirY = 0;
+
+  // Camera plane (perpendicular to dir, determines FOV)
+  // Length of planeY determines FOV: 0.66 ≈ 66 degree FOV
+  planeX = 0;
+  planeY = 0.66;
 
   update(dt: number, input: InputSystem) {
-    // Mouse look (pointer lock)
+    const moveSpeed = MOVE_SPEED * dt;
+
+    // --- Mouse rotation (yaw) ---
     const mouse = input.consumeMouseDelta();
-    this.angle += mouse.dx * MOUSE_SENSITIVITY;
-    this.pitch += mouse.dy * MOUSE_SENSITIVITY;
-    this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
+    const rotAngle = -mouse.dx * ROT_SPEED;
 
-    // Move forward/backward along spiral
-    const moveDir = input.forward;
-    this.position += moveDir * MOVE_SPEED * dt;
+    if (rotAngle !== 0) {
+      const cos = Math.cos(rotAngle);
+      const sin = Math.sin(rotAngle);
 
-    // Head bob while moving
-    if (moveDir !== 0) {
-      this.bobTime += dt * HEAD_BOB_FREQUENCY * Math.PI * 2;
-      this.headBob = Math.sin(this.bobTime) * HEAD_BOB_AMPLITUDE;
-    } else {
-      this.headBob *= 0.85;
-      if (Math.abs(this.headBob) < 0.001) this.headBob = 0;
-      this.bobTime = 0;
+      const oldDirX = this.dirX;
+      this.dirX = this.dirX * cos - this.dirY * sin;
+      this.dirY = oldDirX * sin + this.dirY * cos;
+
+      const oldPlaneX = this.planeX;
+      this.planeX = this.planeX * cos - this.planeY * sin;
+      this.planeY = oldPlaneX * sin + this.planeY * cos;
+    }
+
+    // --- W/S: move forward/backward ---
+    const fwd = input.forward;
+    if (fwd !== 0) {
+      const nx = this.posX + this.dirX * moveSpeed * fwd;
+      const ny = this.posY + this.dirY * moveSpeed * fwd;
+
+      if (this.canWalk(nx, this.posY)) this.posX = nx;
+      if (this.canWalk(this.posX, ny)) this.posY = ny;
+    }
+
+    // --- A/D: strafe left/right ---
+    const strafe = input.strafe;
+    if (strafe !== 0) {
+      // Strafe direction is perpendicular to look direction
+      const strafeX = -this.dirY;
+      const strafeY = this.dirX;
+      const nx = this.posX + strafeX * moveSpeed * 0.7 * strafe;
+      const ny = this.posY + strafeY * moveSpeed * 0.7 * strafe;
+
+      if (this.canWalk(nx, this.posY)) this.posX = nx;
+      if (this.canWalk(this.posX, ny)) this.posY = ny;
     }
   }
 
+  private canWalk(x: number, y: number): boolean {
+    const mx = Math.floor(x);
+    const my = Math.floor(y);
+    if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE) return false;
+    return (MAP[my]?.[mx] ?? 1) === 0;
+  }
+
   get currentFloor(): number {
-    return Math.floor(this.position / STEPS_PER_FLOOR);
+    return 0; // single floor for now
   }
 
   get positionInFloor(): number {
-    return ((this.position % STEPS_PER_FLOOR) + STEPS_PER_FLOOR) % STEPS_PER_FLOOR;
+    return Math.floor(this.posX + this.posY * MAP_SIZE);
   }
 }

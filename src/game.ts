@@ -51,7 +51,7 @@ export class Game {
 
     // Exploration mode
     this.player.update(dt, this.input);
-    this.world.update(this.player.position);
+    this.world.update(0);
 
     // Click picks the book under the crosshair
     if (this.input.consumeClick()) {

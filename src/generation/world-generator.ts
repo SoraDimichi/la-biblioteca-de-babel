@@ -3,19 +3,18 @@ import {
   SHELVES_PER_WALL,
   BOOKS_PER_SHELF,
   STEPS_PER_FLOOR,
-  VIEW_STEPS,
   BOOK_SPINE_COLORS,
 } from "@/config";
 
 export interface BookInfo {
   colorIndex: number;
-  width: number; // 2-6
+  width: number;
   seed: number;
 }
 
 export interface StepData {
   worldStep: number;
-  shelves: BookInfo[][]; // [shelf][book]
+  shelves: BookInfo[][];
 }
 
 export class WorldGenerator {
@@ -26,26 +25,18 @@ export class WorldGenerator {
 
     const data = this.generateStep(worldStep);
     this.cache.set(worldStep, data);
+
+    // Keep cache bounded
+    if (this.cache.size > 500) {
+      const first = this.cache.keys().next().value;
+      if (first !== undefined) this.cache.delete(first);
+    }
+
     return data;
   }
 
-  update(playerPosition: number) {
-    const center = Math.floor(playerPosition);
-
-    // Evict steps outside view range
-    for (const [step] of this.cache) {
-      if (Math.abs(step - center) > VIEW_STEPS + 5) {
-        this.cache.delete(step);
-      }
-    }
-
-    // Pre-generate visible steps
-    for (let offset = -2; offset <= VIEW_STEPS; offset++) {
-      const step = center + offset;
-      if (!this.cache.has(step)) {
-        this.cache.set(step, this.generateStep(step));
-      }
-    }
+  update(_playerPosition: number) {
+    // Generation is on-demand via getStep
   }
 
   private generateStep(worldStep: number): StepData {

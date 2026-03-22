@@ -1,20 +1,12 @@
-import { RENDER_WIDTH, RENDER_HEIGHT, STEPS_PER_FLOOR } from "@/config";
+import { RENDER_HEIGHT } from "@/config";
 import type { PlayerSystem } from "@/systems/player";
 
 export class HUD {
-  private controlsAlpha = 1;
-  private timer = 0;
-
   render(ctx: CanvasRenderingContext2D, player: PlayerSystem) {
-    ctx.font = "7px monospace";
+    ctx.font = "14px monospace";
     ctx.fillStyle = "#d4c5a9";
-
-    const floor = player.currentFloor;
-    const step = Math.floor(player.positionInFloor);
-    ctx.fillText(`Floor ${floor} · Step ${step}`, 6, RENDER_HEIGHT - 6);
+    ctx.fillText(`Pos: ${player.posX.toFixed(1)}, ${player.posY.toFixed(1)}`, 10, RENDER_HEIGHT - 10);
   }
 
-  update(dt: number) {
-    this.timer += dt;
-  }
+  update(_dt: number) {}
 }
