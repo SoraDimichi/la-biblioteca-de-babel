@@ -44,8 +44,8 @@ export class InputSystem {
 
   get strafe(): number {
     let v = 0;
-    if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) v += 1;
-    if (this.keys.has("KeyA") || this.keys.has("ArrowLeft")) v -= 1;
+    if (this.keys.has("KeyD")) v += 1;
+    if (this.keys.has("KeyA")) v -= 1;
     return v;
   }
 
