@@ -14,44 +14,90 @@ export interface BookHit {
   slot: number;
 }
 
-// Map: a hexagonal corridor (approximated as a ring of cells)
-// 1 = outer wall (bookshelves), 2 = inner wall (void), 0 = walkable
+// Map layout: hexagonal room divided into 6 triangular sectors (pizza slices).
+// 5 sectors = gallery with bookshelves on outer walls.
+// 1 sector = staircase (floor rises toward center).
+// 0 = walkable gallery, 1 = bookshelf wall, 2 = void/dark, 3 = stair wall
 const MAP_SIZE = 32;
-const MAP: number[][] = createMap();
+const MAP: number[][] = [];
+const FLOOR_H: number[][] = []; // floor height per cell
+const HEX_CX = MAP_SIZE / 2;
+const HEX_CY = MAP_SIZE / 2;
+const HEX_R = 12; // hex radius in cells
+const STAIR_SECTOR = 0; // which of the 6 sectors (0-5) is the staircase
 
-function createMap(): number[][] {
-  const m: number[][] = Array.from({ length: MAP_SIZE }, () =>
-    Array.from({ length: MAP_SIZE }, () => 1)
-  );
-
-  const cx = MAP_SIZE / 2;
-  const cy = MAP_SIZE / 2;
-  const outerR = 13;
-  const innerR = 8;
+function initMap() {
+  for (let y = 0; y < MAP_SIZE; y++) {
+    MAP[y] = new Array(MAP_SIZE).fill(2); // default: void
+    FLOOR_H[y] = new Array(MAP_SIZE).fill(0);
+  }
 
   for (let y = 0; y < MAP_SIZE; y++) {
     for (let x = 0; x < MAP_SIZE; x++) {
-      const dx = x - cx + 0.5;
-      const dy = y - cy + 0.5;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dx = x - HEX_CX + 0.5;
+      const dy = y - HEX_CY + 0.5;
 
-      if (dist >= innerR && dist <= outerR) {
-        m[y]![x] = 0; // walkable corridor
-      } else if (dist > outerR && dist <= outerR + 1) {
-        m[y]![x] = 1; // outer wall (bookshelves)
-      } else if (dist >= innerR - 1 && dist < innerR) {
-        m[y]![x] = 2; // inner wall (void/railing)
+      // Hex containment: use max of axial distances (flat-top hex)
+      const q = (2 / 3) * dx;
+      const r = (-1 / 3) * dx + (Math.sqrt(3) / 3) * dy;
+      const hexDist = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
+
+      if (hexDist > HEX_R) continue; // outside hex
+
+      // Determine which sector (0-5) this cell is in
+      const angle = Math.atan2(dy, dx); // -PI to PI
+      const normAngle = ((angle + Math.PI * 2) % (Math.PI * 2)); // 0 to 2PI
+      const sector = Math.floor(normAngle / (Math.PI / 3)) % 6;
+
+      const isOuterRing = hexDist > HEX_R - 1.5;
+      const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+      if (sector === STAIR_SECTOR) {
+        // --- Staircase sector ---
+        if (isOuterRing) {
+          MAP[y]![x] = 3; // stair outer wall
+        } else {
+          MAP[y]![x] = 0; // walkable stair
+          // Floor rises from outer edge toward center
+          const t = 1 - (distFromCenter / (HEX_R - 1));
+          FLOOR_H[y]![x] = Math.max(0, t * 3.0); // rises up to 3 units high
+        }
+
+        // Stair sector side walls (the two edges of the pizza slice)
+        const sectorStart = STAIR_SECTOR * (Math.PI / 3);
+        const sectorEnd = (STAIR_SECTOR + 1) * (Math.PI / 3);
+        const angleToBoundary1 = Math.abs(normAngle - sectorStart);
+        const angleToBoundary2 = Math.abs(normAngle - sectorEnd);
+        const edgeThreshold = 0.15;
+        if ((angleToBoundary1 < edgeThreshold || angleToBoundary2 < edgeThreshold) && !isOuterRing) {
+          MAP[y]![x] = 3; // side wall of staircase
+        }
+      } else {
+        // --- Gallery sector ---
+        if (isOuterRing) {
+          MAP[y]![x] = 1; // bookshelf wall
+        } else {
+          MAP[y]![x] = 0; // walkable gallery floor
+        }
       }
     }
   }
+}
 
-  return m;
+initMap();
+
+function getFloorHeight(x: number, y: number): number {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE) return 0;
+  return FLOOR_H[my]?.[mx] ?? 0;
 }
 
 // Wall colors
 const WALL_COLORS: Record<number, { light: RGB; dark: RGB }> = {
-  1: { light: [61, 43, 31], dark: [42, 30, 22] },   // outer wall (brown wood)
-  2: { light: [22, 22, 38], dark: [15, 15, 28] },     // inner wall (dark void)
+  1: { light: [61, 43, 31], dark: [42, 30, 22] },   // bookshelf wall (wood)
+  2: { light: [12, 12, 20], dark: [8, 8, 15] },      // void/dark
+  3: { light: [50, 42, 35], dark: [38, 32, 26] },    // stair wall (stone)
 };
 
 const CX = Math.floor(RENDER_WIDTH / 2);
@@ -151,8 +197,14 @@ export class Renderer {
 
       const lineHeight = Math.floor(h / Math.max(0.01, perpWallDist));
       const pitchShift = Math.round(player.pitch);
-      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift));
-      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift));
+
+      // Shift wall vertically based on floor height difference (stairs!)
+      const wallFloorH = getFloorHeight(mapX, mapY);
+      const playerFloorH = getFloorHeight(player.posX, player.posY);
+      const heightShift = Math.round((wallFloorH - playerFloorH) * lineHeight * 0.5);
+
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift - heightShift));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift - heightShift));
 
       // Store for book picking
       this.columnWallDist[x] = perpWallDist;
@@ -306,4 +358,4 @@ function rgb(c: RGB): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export { MAP, MAP_SIZE };
+export { MAP, MAP_SIZE, FLOOR_H, getFloorHeight };

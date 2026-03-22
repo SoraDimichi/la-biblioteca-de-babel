@@ -6,9 +6,10 @@ const MOVE_SPEED = 3.5;
 const MOUSE_SENSITIVITY = 0.003;
 
 export class PlayerSystem {
-  posX = 16;
-  posY = 5.5;
-  dirX = -1;
+  // Spawn in gallery sector (left side of hex, facing right toward bookshelves)
+  posX = 10;
+  posY = 16;
+  dirX = 1;
   dirY = 0;
   planeX = 0;
   planeY = 0.66;
