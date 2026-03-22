@@ -41,6 +41,7 @@ export class Game {
     if (this.bookViewer.visible) {
       if (this.input.wasJustPressed("Space")) {
         this.bookViewer.close();
+        this.input.consumeClick(); // discard any pending click
       }
       if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);
       if (this.input.wasJustPressed("KeyA")) this.bookViewer.flipPage(-2);
