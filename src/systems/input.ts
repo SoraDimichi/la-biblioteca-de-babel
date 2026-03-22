@@ -6,6 +6,7 @@ export class InputSystem {
   private _mouseDY = 0;
   private locked = false;
   private canvas: HTMLCanvasElement;
+  private wantLock = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -13,6 +14,13 @@ export class InputSystem {
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);
       this.keys.add(e.code);
+
+      // When Escape is pressed and we want to keep pointer lock (e.g. closing a book),
+      // immediately re-request it. The keydown event counts as user activation.
+      if (e.code === "Escape" && this.wantLock) {
+        this.wantLock = false;
+        setTimeout(() => canvas.requestPointerLock(), 0);
+      }
     });
     window.addEventListener("keyup", (e) => {
       this.keys.delete(e.code);
@@ -85,8 +93,9 @@ export class InputSystem {
     return this.locked;
   }
 
+  /** Schedule pointer lock re-acquisition on next mouse interaction */
   requestLock() {
-    this.canvas.requestPointerLock();
+    this.wantLock = true;
   }
 
   endFrame() {

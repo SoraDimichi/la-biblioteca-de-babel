@@ -37,11 +37,12 @@ export class Game {
 
     if (this.input.wasJustPressed("F3")) this.perfMonitor.toggle();
 
-    // Book mode: A/D flip pages, Escape closes and re-locks pointer
+    // Book mode: A/D flip pages, Escape closes
     if (this.bookViewer.visible) {
+      // Always want re-lock while book is open (so Escape re-locks immediately)
+      this.input.requestLock();
       if (this.input.wasJustPressed("Escape")) {
         this.bookViewer.close();
-        this.input.requestLock();
       }
       if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);
       if (this.input.wasJustPressed("KeyA")) this.bookViewer.flipPage(-2);
@@ -57,7 +58,6 @@ export class Game {
       if (hit) {
         const addr = bookAddressFromWorldStep(hit.worldStep, hit.shelf, hit.slot);
         this.bookViewer.open(addr);
-        document.exitPointerLock();
       }
     }
 
