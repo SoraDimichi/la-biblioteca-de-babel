@@ -67,6 +67,12 @@ export class WorldManager {
 
       // Update visibility (culling)
       chunk.container.visible = dist <= CHUNK_LOAD_RADIUS;
+
+      // Distance fog: alpha fades from 1.0 (at camera) to 0.2 (at load boundary)
+      if (chunk.container.visible) {
+        const fogT = Math.min(dist / CHUNK_LOAD_RADIUS, 1);
+        chunk.container.alpha = 1.0 - fogT * 0.8;
+      }
     }
   }
 

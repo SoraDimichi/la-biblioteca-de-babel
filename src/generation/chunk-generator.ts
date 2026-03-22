@@ -90,6 +90,28 @@ function renderNear(chunk: HexChunk, floorColor: number) {
   g.fill({ color: 0x050508 });
   g.stroke({ color: COLOR_RAILING, width: 1, alpha: 0.5 });
 
+  // Ladder at one hex edge (deterministic position from seed)
+  const ladderWall = seedFromAddress(chunk.address.q, chunk.address.r, chunk.address.y) % WALL_COUNT;
+  const lc1 = corners[ladderWall]!;
+  const lc2 = corners[(ladderWall + 1) % 6]!;
+  const ladderX = (lc1.x + lc2.x) / 2;
+  const ladderY = (lc1.y + lc2.y) / 2;
+  const ladderWidth = 8;
+  const rungs = 6;
+
+  // Ladder rails
+  g.rect(ladderX - ladderWidth / 2, ladderY - WALL_HEIGHT, 1.5, WALL_HEIGHT);
+  g.fill({ color: COLOR_RAILING, alpha: 0.7 });
+  g.rect(ladderX + ladderWidth / 2 - 1.5, ladderY - WALL_HEIGHT, 1.5, WALL_HEIGHT);
+  g.fill({ color: COLOR_RAILING, alpha: 0.7 });
+
+  // Ladder rungs
+  for (let i = 1; i <= rungs; i++) {
+    const rungY = ladderY - (WALL_HEIGHT * i) / (rungs + 1);
+    g.rect(ladderX - ladderWidth / 2, rungY - 0.5, ladderWidth, 1);
+    g.fill({ color: COLOR_RAILING, alpha: 0.6 });
+  }
+
   // Walls with shelves
   for (let w = 0; w < WALL_COUNT; w++) {
     const c1 = corners[w]!;
