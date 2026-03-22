@@ -14,45 +14,89 @@ export interface BookHit {
   slot: number;
 }
 
-// Simple hex room: 6 bookshelf walls, flat floor inside.
-// 0 = walkable, 1 = bookshelf wall, 2 = outside
-const MAP_SIZE = 32;
-const MAP: number[][] = [];
-const HEX_CX = MAP_SIZE / 2;
-const HEX_CY = MAP_SIZE / 2;
+// --- Hex geometry: 6 wall segments ---
+const HEX_CX = 16;
+const HEX_CY = 16;
 const HEX_R = 10;
 
-function initMap() {
-  for (let y = 0; y < MAP_SIZE; y++) {
-    MAP[y] = new Array(MAP_SIZE).fill(2);
-  }
-
-  for (let y = 0; y < MAP_SIZE; y++) {
-    for (let x = 0; x < MAP_SIZE; x++) {
-      const dx = x - HEX_CX + 0.5;
-      const dy = y - HEX_CY + 0.5;
-      const q = (2 / 3) * dx;
-      const r = (-1 / 3) * dx + (Math.sqrt(3) / 3) * dy;
-      const hexDist = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
-
-      if (hexDist > HEX_R) continue;
-
-      if (hexDist > HEX_R - 1.2) {
-        MAP[y]![x] = 1; // wall
-      } else {
-        MAP[y]![x] = 0; // floor
-      }
-    }
-  }
+interface WallSeg {
+  x1: number; y1: number;
+  x2: number; y2: number;
+  wallIndex: number; // 0-5
+  nx: number; ny: number; // inward-facing normal
 }
 
-initMap();
+// Build 6 wall segments (flat-top hex)
+const WALLS: WallSeg[] = [];
+const HEX_CORNERS: { x: number; y: number }[] = [];
 
-// Wall colors
-const WALL_COLORS: Record<number, { light: RGB; dark: RGB }> = {
-  1: { light: [61, 43, 31], dark: [42, 30, 22] },   // bookshelf wall (wood)
-  2: { light: [12, 12, 20], dark: [8, 8, 15] },      // void/outside
-};
+for (let i = 0; i < 6; i++) {
+  const angle = (Math.PI / 3) * i;
+  HEX_CORNERS.push({
+    x: HEX_CX + HEX_R * Math.cos(angle),
+    y: HEX_CY + HEX_R * Math.sin(angle),
+  });
+}
+
+for (let i = 0; i < 6; i++) {
+  const c1 = HEX_CORNERS[i]!;
+  const c2 = HEX_CORNERS[(i + 1) % 6]!;
+  // Inward normal: perpendicular to wall, pointing toward center
+  const dx = c2.x - c1.x;
+  const dy = c2.y - c1.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  // Normal pointing inward (toward center)
+  let nx = -dy / len;
+  let ny = dx / len;
+  // Make sure it points toward center
+  const midX = (c1.x + c2.x) / 2;
+  const midY = (c1.y + c2.y) / 2;
+  if ((HEX_CX - midX) * nx + (HEX_CY - midY) * ny < 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  WALLS.push({ x1: c1.x, y1: c1.y, x2: c2.x, y2: c2.y, wallIndex: i, nx, ny });
+}
+
+// Collision: check if point is inside the hex
+function isInsideHex(px: number, py: number): boolean {
+  for (const wall of WALLS) {
+    const dx = px - wall.x1;
+    const dy = py - wall.y1;
+    // Check point is on the inward side of each wall
+    const cross = (wall.x2 - wall.x1) * dy - (wall.y2 - wall.y1) * dx;
+    // Cross product sign tells which side; must match normal direction
+    const dot = dx * wall.nx + dy * wall.ny;
+    // Simplified: use the signed distance to the wall line
+    const wallDx = wall.x2 - wall.x1;
+    const wallDy = wall.y2 - wall.y1;
+    const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
+    const dist = ((px - wall.x1) * (-wallDy / wallLen) + (py - wall.y1) * (wallDx / wallLen));
+    if (dist < 0) return false;
+  }
+  return true;
+}
+
+// Ray-segment intersection: returns t (distance along ray) or null
+function raySegIntersect(
+  ox: number, oy: number, dx: number, dy: number,
+  x1: number, y1: number, x2: number, y2: number
+): { t: number; u: number } | null {
+  const sx = x2 - x1;
+  const sy = y2 - y1;
+  const denom = dx * sy - dy * sx;
+  if (Math.abs(denom) < 1e-10) return null; // parallel
+
+  const t = ((x1 - ox) * sy - (y1 - oy) * sx) / denom;
+  const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
+
+  if (t < 0.001 || u < 0 || u > 1) return null;
+  return { t, u };
+}
+
+// Wall colors: alternate light/dark per wall for depth
+const WALL_LIGHT: RGB = [61, 43, 31];
+const WALL_DARK: RGB = [45, 32, 23];
 
 const CX = Math.floor(RENDER_WIDTH / 2);
 const CY = Math.floor(RENDER_HEIGHT / 2);
@@ -62,122 +106,83 @@ export class Renderer {
   private flicker = 1.0;
   bookUnderCrosshair: BookHit | null = null;
 
-  // Per-column data for book picking: which wall step and distance
-  private columnWallStep: (number | null)[] = new Array(RENDER_WIDTH).fill(null);
-  private columnWallDist: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnDrawStart: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnDrawEnd: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnSide: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnMapX: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnMapY: number[] = new Array(RENDER_WIDTH).fill(0);
-  private columnWallType: number[] = new Array(RENDER_WIDTH).fill(0);
+  // Per-column data for bookshelf rendering
+  private colDist: number[] = new Array(RENDER_WIDTH).fill(0);
+  private colStart: number[] = new Array(RENDER_WIDTH).fill(0);
+  private colEnd: number[] = new Array(RENDER_WIDTH).fill(0);
+  private colWallIdx: number[] = new Array(RENDER_WIDTH).fill(0);
+  private colWallU: number[] = new Array(RENDER_WIDTH).fill(0); // 0..1 position along wall
 
   constructor(private ctx: CanvasRenderingContext2D) {}
 
   render(player: PlayerSystem, world: WorldGenerator) {
     const ctx = this.ctx;
-
     this.flickerTime += 0.016;
     this.flicker = 0.97 + Math.sin(this.flickerTime * 2.3) * 0.03;
     this.bookUnderCrosshair = null;
 
-    const pitchShift = Math.round(player.pitch);
-
-    // Clear with floor/ceiling gradient
-    this.drawFloorCeiling(ctx, pitchShift);
-
+    const pitch = Math.round(player.pitch);
     const w = RENDER_WIDTH;
     const h = RENDER_HEIGHT;
 
-    // --- DDA Raycasting (from Lode Vandevenne / ZeroDayArcade) ---
+    // Floor & ceiling
+    const horizon = Math.floor(h / 2 + pitch);
+    ctx.fillStyle = `rgb(14,12,10)`;
+    ctx.fillRect(0, 0, w, Math.max(0, horizon));
+    ctx.fillStyle = `rgb(30,24,17)`;
+    ctx.fillRect(0, Math.max(0, horizon), w, h);
+
+    // --- Raycast against hex wall segments ---
     for (let x = 0; x < w; x++) {
       const cameraX = 2 * x / w - 1;
       const rayDirX = player.dirX + player.planeX * cameraX;
       const rayDirY = player.dirY + player.planeY * cameraX;
 
-      let mapX = Math.floor(player.posX);
-      let mapY = Math.floor(player.posY);
+      let nearestT = Infinity;
+      let nearestWall = -1;
+      let nearestU = 0;
 
-      const deltaDistX = rayDirX === 0 ? 1e30 : Math.abs(1 / rayDirX);
-      const deltaDistY = rayDirY === 0 ? 1e30 : Math.abs(1 / rayDirY);
-
-      let sideDistX: number;
-      let sideDistY: number;
-      let stepX: number;
-      let stepY: number;
-
-      if (rayDirX < 0) {
-        stepX = -1;
-        sideDistX = (player.posX - mapX) * deltaDistX;
-      } else {
-        stepX = 1;
-        sideDistX = (mapX + 1.0 - player.posX) * deltaDistX;
-      }
-
-      if (rayDirY < 0) {
-        stepY = -1;
-        sideDistY = (player.posY - mapY) * deltaDistY;
-      } else {
-        stepY = 1;
-        sideDistY = (mapY + 1.0 - player.posY) * deltaDistY;
-      }
-
-      // DDA
-      let hit = 0;
-      let side = 0;
-      while (hit === 0) {
-        if (sideDistX < sideDistY) {
-          sideDistX += deltaDistX;
-          mapX += stepX;
-          side = 0;
-        } else {
-          sideDistY += deltaDistY;
-          mapY += stepY;
-          side = 1;
-        }
-        if (mapX < 0 || mapX >= MAP_SIZE || mapY < 0 || mapY >= MAP_SIZE) {
-          hit = 1;
-          break;
-        }
-        const cell = MAP[mapY]?.[mapX] ?? 1;
-        if (cell > 0) {
-          hit = cell;
+      for (let i = 0; i < 6; i++) {
+        const wall = WALLS[i]!;
+        const hit = raySegIntersect(
+          player.posX, player.posY, rayDirX, rayDirY,
+          wall.x1, wall.y1, wall.x2, wall.y2
+        );
+        if (hit && hit.t < nearestT) {
+          nearestT = hit.t;
+          nearestWall = i;
+          nearestU = hit.u;
         }
       }
 
-      const perpWallDist = side === 0
-        ? sideDistX - deltaDistX
-        : sideDistY - deltaDistY;
+      if (nearestWall < 0) {
+        this.colDist[x] = 999;
+        this.colWallIdx[x] = -1;
+        continue;
+      }
 
-      const lineHeight = Math.floor(h / Math.max(0.01, perpWallDist));
-      const pitchShift = Math.round(player.pitch);
-      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift));
-      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift));
+      // Perpendicular distance (same as nearestT for segment-based casting)
+      const perpDist = nearestT;
+      const lineHeight = Math.floor(h / Math.max(0.01, perpDist));
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitch));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitch));
 
-      // Store for book picking
-      this.columnWallDist[x] = perpWallDist;
-      this.columnDrawStart[x] = drawStart;
-      this.columnDrawEnd[x] = drawEnd;
-      this.columnSide[x] = side;
-      this.columnMapX[x] = mapX;
-      this.columnMapY[x] = mapY;
-      this.columnWallType[x] = hit;
+      this.colDist[x] = perpDist;
+      this.colStart[x] = drawStart;
+      this.colEnd[x] = drawEnd;
+      this.colWallIdx[x] = nearestWall;
+      this.colWallU[x] = nearestU;
 
-      // Get wall color
-      const wallDef = WALL_COLORS[hit] ?? WALL_COLORS[1]!;
-      const baseColor = side === 1 ? wallDef.dark : wallDef.light;
-
-      // Fog based on distance
-      const foggedColor = this.applyFog(baseColor, perpWallDist);
-
-      ctx.fillStyle = rgb(foggedColor);
+      // Alternate wall shading for depth
+      const baseColor = nearestWall % 2 === 0 ? WALL_LIGHT : WALL_DARK;
+      ctx.fillStyle = rgb(this.applyFog(baseColor, perpDist));
       ctx.fillRect(x, drawStart, 1, drawEnd - drawStart + 1);
     }
 
-    // Draw shelves and books on the outer wall (type 1)
-    this.drawBookshelves(ctx, player, world);
+    // Bookshelves on all walls
+    this.drawBookshelves(ctx, world);
 
-    // Crosshair at center
+    // Crosshair
     ctx.fillStyle = "rgba(212,197,169,0.5)";
     ctx.fillRect(CX - 4, CY, 9, 1);
     ctx.fillRect(CX, CY - 4, 1, 9);
@@ -185,79 +190,50 @@ export class Renderer {
     this.drawBookTooltip(ctx);
   }
 
-  private drawFloorCeiling(ctx: CanvasRenderingContext2D, pitchShift: number) {
-    const horizon = Math.floor(RENDER_HEIGHT / 2 + pitchShift);
-    // Ceiling (dark)
-    ctx.fillStyle = `rgb(18,16,12)`;
-    ctx.fillRect(0, 0, RENDER_WIDTH, Math.max(0, horizon));
-    // Floor (stone)
-    ctx.fillStyle = `rgb(32,26,18)`;
-    ctx.fillRect(0, Math.max(0, horizon), RENDER_WIDTH, RENDER_HEIGHT - horizon);
-  }
-
-  private drawBookshelves(ctx: CanvasRenderingContext2D, player: PlayerSystem, world: WorldGenerator) {
-    // For each column that hit an outer wall (type 1), draw shelves on top
+  private drawBookshelves(ctx: CanvasRenderingContext2D, world: WorldGenerator) {
     for (let x = 0; x < RENDER_WIDTH; x++) {
-      if (this.columnWallType[x] !== 1) continue;
+      const wallIdx = this.colWallIdx[x]!;
+      if (wallIdx < 0) continue;
 
-      const dist = this.columnWallDist[x]!;
-      if (dist > 8) continue; // too far for books
+      const dist = this.colDist[x]!;
+      if (dist > 12) continue;
 
-      const drawStart = this.columnDrawStart[x]!;
-      const drawEnd = this.columnDrawEnd[x]!;
+      const drawStart = this.colStart[x]!;
+      const drawEnd = this.colEnd[x]!;
       const wallHeight = drawEnd - drawStart;
-      if (wallHeight <= 0) continue;
+      if (wallHeight <= 4) continue;
 
-      // Determine world step from map position for book data
-      const mx = this.columnMapX[x]!;
-      const my = this.columnMapY[x]!;
-      const worldStep = my * MAP_SIZE + mx; // unique per wall cell
+      const wallU = this.colWallU[x]!; // 0..1 position along this wall segment
+      const worldStep = wallIdx; // each wall = one "step" for book data
 
       const stepData = world.getStep(worldStep);
       if (!stepData) continue;
 
-      // Draw shelf planks and books within this 1-pixel column
-      const shelfCount = SHELVES_PER_WALL;
-      for (let s = 0; s < shelfCount; s++) {
-        const shelfT = (s + 1) / (shelfCount + 1);
+      for (let s = 0; s < SHELVES_PER_WALL; s++) {
+        const shelfT = (s + 1) / (SHELVES_PER_WALL + 1);
         const shelfY = Math.floor(drawStart + wallHeight * shelfT);
 
-        // Shelf plank (1 pixel)
-        const shelfColor = this.applyFog([92, 64, 51], dist);
-        ctx.fillStyle = rgb(shelfColor);
-        ctx.fillRect(x, shelfY, 1, Math.max(1, Math.round(1.5 / dist)));
+        // Shelf plank
+        ctx.fillStyle = rgb(this.applyFog([92, 64, 51], dist));
+        ctx.fillRect(x, shelfY, 1, Math.max(1, Math.round(2 / dist)));
 
-        // Books above the shelf plank
-        const bookT0 = s / (shelfCount + 1);
-        const bookT1 = shelfT;
+        // Books
+        const bookT0 = s / (SHELVES_PER_WALL + 1);
         const bookTop = Math.floor(drawStart + wallHeight * bookT0) + 1;
         const bookBot = shelfY - 1;
         const bookH = bookBot - bookTop;
         if (bookH <= 0) continue;
 
-        // Which book is at this column? Use fractional wall position
-        const side = this.columnSide[x]!;
-        let wallX: number;
-        if (side === 0) {
-          wallX = player.posY + this.columnWallDist[x]! *
-            (player.dirY + player.planeY * (2 * x / RENDER_WIDTH - 1));
-        } else {
-          wallX = player.posX + this.columnWallDist[x]! *
-            (player.dirX + player.planeX * (2 * x / RENDER_WIDTH - 1));
-        }
-        wallX = wallX - Math.floor(wallX); // 0..1 position along the wall face
-
         const shelfBooks = stepData.shelves[s];
         if (!shelfBooks) continue;
 
-        const bookIndex = Math.floor(wallX * shelfBooks.length);
+        const bookIndex = Math.floor(wallU * shelfBooks.length);
         const book = shelfBooks[Math.min(bookIndex, shelfBooks.length - 1)];
         if (!book) continue;
 
         const color = BOOK_SPINE_COLORS[book.colorIndex];
         if (!color) continue;
 
-        // Check if crosshair is on this book
         const isHit = x === CX && CY >= bookTop && CY <= bookBot;
 
         let drawColor: RGB;
@@ -269,9 +245,7 @@ export class Renderer {
           ], dist);
           const floor = Math.floor(worldStep / STEPS_PER_FLOOR);
           const segment = ((worldStep % STEPS_PER_FLOOR) + STEPS_PER_FLOOR) % STEPS_PER_FLOOR;
-          this.bookUnderCrosshair = {
-            worldStep, floor, segment, shelf: s, slot: bookIndex,
-          };
+          this.bookUnderCrosshair = { worldStep, floor, segment, shelf: s, slot: bookIndex };
         } else {
           drawColor = this.applyFog(color, dist);
         }
@@ -283,8 +257,7 @@ export class Renderer {
   }
 
   private applyFog(color: RGB, distance: number): RGB {
-    const maxDist = 16;
-    const fogFactor = Math.min(1, Math.max(0, distance / maxDist));
+    const fogFactor = Math.min(1, Math.max(0, distance / 20));
     const brightness = this.flicker * (1 - fogFactor * 0.9);
     return [
       Math.max(0, Math.min(255, Math.round(color[0] * brightness))),
@@ -297,8 +270,8 @@ export class Renderer {
     const hit = this.bookUnderCrosshair;
     if (!hit) return;
     ctx.fillStyle = "rgba(212,197,169,0.8)";
-    ctx.font = "7px monospace";
-    ctx.fillText(`Floor ${hit.floor} · Shelf ${hit.shelf} · Book ${hit.slot}`, CX - 50, CY + 16);
+    ctx.font = "12px monospace";
+    ctx.fillText(`Wall ${hit.worldStep} · Shelf ${hit.shelf} · Book ${hit.slot}`, CX - 70, CY + 20);
   }
 }
 
@@ -306,4 +279,4 @@ function rgb(c: RGB): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export { MAP, MAP_SIZE };
+export { isInsideHex, HEX_CX, HEX_CY };
