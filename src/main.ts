@@ -1,57 +1,36 @@
 import { Game } from "@/game";
-import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 function bootstrap() {
-  // Display canvas (fills the window)
-  const displayCanvas = document.createElement("canvas");
-  displayCanvas.style.display = "block";
-  displayCanvas.style.imageRendering = "pixelated";
-  document.body.appendChild(displayCanvas);
+  const canvas = document.createElement("canvas");
+  canvas.style.display = "block";
+  document.body.appendChild(canvas);
 
-  // Offscreen render canvas at logical resolution
-  const renderCanvas = document.createElement("canvas");
-  renderCanvas.width = RENDER_WIDTH;
-  renderCanvas.height = RENDER_HEIGHT;
+  const ctx = canvas.getContext("2d")!;
 
-  const renderCtx = renderCanvas.getContext("2d")!;
-  const displayCtx = displayCanvas.getContext("2d")!;
-  displayCtx.imageSmoothingEnabled = false;
+  let renderWidth = 0;
+  let renderHeight = 0;
 
   function resize() {
-    displayCanvas.width = window.innerWidth;
-    displayCanvas.height = window.innerHeight;
-    displayCtx.imageSmoothingEnabled = false;
+    const dpr = window.devicePixelRatio || 1;
+    renderWidth = Math.floor(window.innerWidth * dpr);
+    renderHeight = Math.floor(window.innerHeight * dpr);
+    canvas.width = renderWidth;
+    canvas.height = renderHeight;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
   }
   resize();
   window.addEventListener("resize", resize);
 
-  const game = new Game(renderCtx, displayCanvas);
+  const game = new Game(ctx, canvas, () => ({ w: renderWidth, h: renderHeight }));
 
   let lastTime = 0;
   function frame(time: number) {
-    const dt = Math.min((time - lastTime) / 1000, 0.05); // cap at 50ms
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
 
     game.update(dt);
     game.render();
-
-    // Scale render canvas to display
-    displayCtx.fillStyle = "#0a0a0f";
-    displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
-
-    // Maintain aspect ratio
-    const scale = Math.min(
-      displayCanvas.width / RENDER_WIDTH,
-      displayCanvas.height / RENDER_HEIGHT
-    );
-    const offsetX = (displayCanvas.width - RENDER_WIDTH * scale) / 2;
-    const offsetY = (displayCanvas.height - RENDER_HEIGHT * scale) / 2;
-
-    displayCtx.drawImage(
-      renderCanvas,
-      0, 0, RENDER_WIDTH, RENDER_HEIGHT,
-      offsetX, offsetY, RENDER_WIDTH * scale, RENDER_HEIGHT * scale
-    );
 
     requestAnimationFrame(frame);
   }

@@ -6,7 +6,6 @@ import { BookViewer } from "@/ui/book-viewer";
 import { HUD } from "@/ui/hud";
 import { PerfMonitor } from "@/debug/perf-monitor";
 import { bookAddressFromWorldStep } from "@/generation/book-data";
-import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 export class Game {
   private input: InputSystem;
@@ -19,12 +18,13 @@ export class Game {
 
   constructor(
     private ctx: CanvasRenderingContext2D,
-    displayCanvas: HTMLCanvasElement
+    displayCanvas: HTMLCanvasElement,
+    private getSize: () => { w: number; h: number }
   ) {
     this.input = new InputSystem(displayCanvas);
     this.player = new PlayerSystem();
     this.world = new WorldGenerator();
-    this.renderer = new Renderer(ctx);
+    this.renderer = new Renderer();
     this.bookViewer = new BookViewer();
     this.hud = new HUD();
     this.perfMonitor = new PerfMonitor();
@@ -56,23 +56,26 @@ export class Game {
   }
 
   render() {
+    const { w, h } = this.getSize();
+    const ctx = this.ctx;
+
     if (this.bookViewer.visible) {
-      this.bookViewer.render(this.ctx);
+      this.bookViewer.render(ctx, w, h);
       return;
     }
 
-    this.renderer.render(this.player, this.world);
-    this.hud.render(this.ctx, this.player);
-    this.perfMonitor.render(this.ctx, this.world.cacheSize);
+    this.renderer.render(ctx, w, h, this.player, this.world);
+    this.hud.render(ctx, w, h, this.player);
+    this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
 
     if (!this.input.isLocked) {
-      this.ctx.fillStyle = "rgba(10,10,15,0.6)";
-      this.ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
-      this.ctx.fillStyle = "#d4c5a9";
-      this.ctx.font = "16px monospace";
-      this.ctx.fillText("Click to enter the Library", RENDER_WIDTH / 2 - 110, RENDER_HEIGHT / 2);
-      this.ctx.font = "11px monospace";
-      this.ctx.fillText("WASD move · Mouse look · Click book · Esc exit", RENDER_WIDTH / 2 - 150, RENDER_HEIGHT / 2 + 24);
+      ctx.fillStyle = "rgba(10,10,15,0.6)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#d4c5a9";
+      ctx.font = `${Math.floor(h / 30)}px monospace`;
+      ctx.fillText("Click to enter the Library", w / 2 - w * 0.12, h / 2);
+      ctx.font = `${Math.floor(h / 45)}px monospace`;
+      ctx.fillText("WASD move · Mouse look · Click book · Esc exit", w / 2 - w * 0.17, h / 2 + h * 0.04);
     }
   }
 }

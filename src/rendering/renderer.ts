@@ -1,5 +1,4 @@
 import {
-  RENDER_WIDTH, RENDER_HEIGHT,
   SHELVES_PER_WALL, BOOK_SPINE_COLORS, STEPS_PER_FLOOR,
   type RGB,
 } from "@/config";
@@ -17,7 +16,7 @@ export interface BookHit {
 // --- Hex geometry ---
 const HEX_CX = 16;
 const HEX_CY = 16;
-const HEX_R = 5; // smaller hex
+const HEX_R = 5;
 
 interface WallSeg {
   x1: number; y1: number;
@@ -57,7 +56,7 @@ function isInsideHex(px: number, py: number): boolean {
     const wallDy = wall.y2 - wall.y1;
     const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
     const dist = ((px - wall.x1) * (-wallDy / wallLen) + (py - wall.y1) * (wallDx / wallLen));
-    if (dist < 0.2) return false; // keep small margin from walls
+    if (dist < 0.2) return false;
   }
   return true;
 }
@@ -76,54 +75,45 @@ function raySegIntersect(
   return { t, u };
 }
 
-// Spiral: height per floor
 const FLOOR_H = 3.0;
-const VISIBLE_FLOORS = 8; // how many floors above/below to render
+const VISIBLE_FLOORS = 8;
 
 function getAngleFromCenter(px: number, py: number): number {
   return ((Math.atan2(py - HEX_CY, px - HEX_CX) + Math.PI * 2) % (Math.PI * 2));
 }
 
-// Wall colors
 const WALL_LIGHT: RGB = [61, 43, 31];
 const WALL_DARK: RGB = [45, 32, 23];
-
-const CX = Math.floor(RENDER_WIDTH / 2);
-const CY = Math.floor(RENDER_HEIGHT / 2);
 
 export class Renderer {
   private flickerTime = 0;
   private flicker = 1.0;
   bookUnderCrosshair: BookHit | null = null;
 
-  constructor(private ctx: CanvasRenderingContext2D) {}
+  constructor() {}
 
-  render(player: PlayerSystem, world: WorldGenerator) {
-    const ctx = this.ctx;
+  render(ctx: CanvasRenderingContext2D, w: number, h: number, player: PlayerSystem, world: WorldGenerator) {
     this.flickerTime += 0.016;
     this.flicker = 0.97 + Math.sin(this.flickerTime * 2.3) * 0.03;
     this.bookUnderCrosshair = null;
 
     const pitch = Math.round(player.pitch);
-    const w = RENDER_WIDTH;
-    const h = RENDER_HEIGHT;
+    const cx = Math.floor(w / 2);
+    const cy = Math.floor(h / 2);
 
-    // Player's continuous height on the spiral
     const playerAngle = getAngleFromCenter(player.posX, player.posY);
-    const EYE_H = FLOOR_H * 0.4; // eye height: 40% up the wall
+    const EYE_H = FLOOR_H * 0.4;
     const playerHeight = player.floor * FLOOR_H + (playerAngle / (Math.PI * 2)) * FLOOR_H + EYE_H;
 
-    // Background: dark void (the tower shaft)
+    // Background
     ctx.fillStyle = `rgb(6,5,8)`;
     ctx.fillRect(0, 0, w, h);
 
-    // For each screen column, cast ray, then draw MULTIPLE floors
     for (let x = 0; x < w; x++) {
       const cameraX = 2 * x / w - 1;
       const rayDirX = player.dirX + player.planeX * cameraX;
       const rayDirY = player.dirY + player.planeY * cameraX;
 
-      // Find nearest hex wall hit
       let nearestT = Infinity;
       let nearestWall = -1;
       let nearestU = 0;
@@ -144,24 +134,20 @@ export class Renderer {
       if (nearestWall < 0) continue;
 
       const perpDist = nearestT;
-      const scale = h / Math.max(0.01, perpDist); // pixels per world unit at this distance
+      const scale = h / Math.max(0.01, perpDist);
 
-      // Spiral height at the hit point on current floor
       const hitX = player.posX + rayDirX * nearestT;
       const hitY = player.posY + rayDirY * nearestT;
       const hitAngle = getAngleFromCenter(hitX, hitY);
 
-      // Draw this wall at multiple floor levels
       for (let df = -VISIBLE_FLOORS; df <= VISIBLE_FLOORS; df++) {
         const floorNum = player.floor + df;
         const wallBaseHeight = floorNum * FLOOR_H + (hitAngle / (Math.PI * 2)) * FLOOR_H;
         const relativeHeight = wallBaseHeight - playerHeight;
 
-        // Wall strip: bottom and top in world units relative to player eye
         const wallBottom = relativeHeight;
         const wallTop = relativeHeight + FLOOR_H * 0.95;
 
-        // Project to screen Y
         const yBottom = Math.floor(h / 2 - wallBottom * scale + pitch);
         const yTop = Math.floor(h / 2 - wallTop * scale + pitch);
 
@@ -169,7 +155,6 @@ export class Renderer {
         const drawEnd = Math.min(h - 1, yBottom);
         if (drawEnd <= drawStart) continue;
 
-        // Distance-based fog + floor-distance fog
         const floorDist = Math.abs(df);
         const totalFog = Math.min(perpDist + floorDist * 2, 20);
 
@@ -177,10 +162,9 @@ export class Renderer {
         ctx.fillStyle = rgb(this.applyFog(baseColor, totalFog));
         ctx.fillRect(x, drawStart, 1, drawEnd - drawStart + 1);
 
-        // Bookshelves on this wall at this floor (only nearby floors)
         if (floorDist <= 3 && perpDist < 10) {
           this.drawColumnBooks(
-            ctx, world, x,
+            ctx, world, x, cx, cy,
             nearestWall, nearestU, floorNum,
             drawStart, drawEnd, perpDist, totalFog
           );
@@ -190,28 +174,23 @@ export class Renderer {
 
     // Crosshair
     ctx.fillStyle = "rgba(212,197,169,0.5)";
-    ctx.fillRect(CX - 4, CY, 9, 1);
-    ctx.fillRect(CX, CY - 4, 1, 9);
+    ctx.fillRect(cx - 4, cy, 9, 1);
+    ctx.fillRect(cx, cy - 4, 1, 9);
 
-    this.drawBookTooltip(ctx);
+    this.drawBookTooltip(ctx, cx, cy);
   }
 
   private drawColumnBooks(
     ctx: CanvasRenderingContext2D,
     world: WorldGenerator,
-    x: number,
-    wallIdx: number,
-    wallU: number,
-    floorNum: number,
-    drawStart: number,
-    drawEnd: number,
-    perpDist: number,
-    fog: number
+    x: number, cx: number, cy: number,
+    wallIdx: number, wallU: number, floorNum: number,
+    drawStart: number, drawEnd: number,
+    perpDist: number, fog: number
   ) {
     const wallHeight = drawEnd - drawStart;
     if (wallHeight <= 4) return;
 
-    // Unique world step per wall per floor
     const worldStep = floorNum * 6 + wallIdx;
     const stepData = world.getStep(worldStep);
     if (!stepData) return;
@@ -220,7 +199,6 @@ export class Renderer {
       const shelfT = (s + 1) / (SHELVES_PER_WALL + 1);
       const shelfY = Math.floor(drawStart + wallHeight * shelfT);
 
-      // Shelf plank
       ctx.fillStyle = rgb(this.applyFog([92, 64, 51], fog));
       ctx.fillRect(x, shelfY, 1, Math.max(1, Math.round(2 / perpDist)));
 
@@ -240,7 +218,7 @@ export class Renderer {
       const color = BOOK_SPINE_COLORS[book.colorIndex];
       if (!color) continue;
 
-      const isHit = x === CX && CY >= bookTop && CY <= bookBot;
+      const isHit = x === cx && cy >= bookTop && cy <= bookBot;
 
       let drawColor: RGB;
       if (isHit) {
@@ -271,12 +249,12 @@ export class Renderer {
     ];
   }
 
-  private drawBookTooltip(ctx: CanvasRenderingContext2D) {
+  private drawBookTooltip(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
     const hit = this.bookUnderCrosshair;
     if (!hit) return;
     ctx.fillStyle = "rgba(212,197,169,0.8)";
-    ctx.font = "12px monospace";
-    ctx.fillText(`Floor ${hit.floor} · Wall ${hit.segment} · Shelf ${hit.shelf} · Book ${hit.slot}`, CX - 100, CY + 20);
+    ctx.font = "14px monospace";
+    ctx.fillText(`Floor ${hit.floor} · Wall ${hit.segment} · Shelf ${hit.shelf} · Book ${hit.slot}`, cx - 120, cy + 24);
   }
 }
 

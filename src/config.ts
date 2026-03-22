@@ -1,7 +1,3 @@
-// Logical render resolution (scaled up to fill screen)
-export const RENDER_WIDTH = 960;
-export const RENDER_HEIGHT = 600;
-
 // World
 export const STEPS_PER_FLOOR = 24;
 

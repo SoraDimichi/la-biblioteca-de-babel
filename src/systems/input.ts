@@ -1,5 +1,3 @@
-import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
-
 export class InputSystem {
   private keys = new Set<string>();
   private justPressed = new Set<string>();

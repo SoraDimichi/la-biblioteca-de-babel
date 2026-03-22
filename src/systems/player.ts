@@ -1,5 +1,4 @@
 import type { InputSystem } from "@/systems/input";
-import { RENDER_HEIGHT } from "@/config";
 import { isInsideHex, HEX_CX, HEX_CY, getAngleFromCenter } from "@/rendering/renderer";
 
 const MOVE_SPEED = 3.5;
@@ -25,7 +24,7 @@ export class PlayerSystem {
     const totalRot = mouse.dx * MOUSE_SENSITIVITY + keyRot * 2.5 * dt;
     if (totalRot !== 0) this.rotate(totalRot);
     this.pitch -= mouse.dy * 1.5;
-    this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
+    this.pitch = Math.max(-400, Math.min(400, this.pitch));
 
     const oldAngle = getAngleFromCenter(this.posX, this.posY);
 

@@ -1,7 +1,7 @@
 import type { BookAddress } from "@/generation/book-data";
 import { generatePage } from "@/generation/babel-text";
 import { seedFromAddress } from "@/math/hash";
-import { RENDER_WIDTH, RENDER_HEIGHT, PAGES_PER_BOOK } from "@/config";
+import { PAGES_PER_BOOK } from "@/config";
 
 export class BookViewer {
   visible = false;
@@ -29,58 +29,62 @@ export class BookViewer {
     this.currentPage = newPage;
   }
 
-  render(ctx: CanvasRenderingContext2D) {
+  render(ctx: CanvasRenderingContext2D, w: number, h: number) {
     if (!this.visible || !this.bookAddress) return;
 
+    const fontSize = Math.max(10, Math.floor(h / 50));
+    const headerSize = Math.max(12, Math.floor(h / 35));
+    const lineHeight = fontSize * 1.3;
+    const margin = Math.floor(w * 0.03);
+
     ctx.fillStyle = "rgba(28, 23, 16, 0.97)";
-    ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+    ctx.fillRect(0, 0, w, h);
 
     const addr = this.bookAddress;
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "18px monospace";
+    ctx.font = `${headerSize}px monospace`;
     ctx.fillText(
       `Floor ${addr.floor} Seg ${addr.segment} — Shelf ${addr.shelf}, Book ${addr.slot}`,
-      30, 34
+      margin, margin + headerSize
     );
 
     ctx.fillStyle = "#8b7d6b";
-    ctx.font = "13px monospace";
+    ctx.font = `${fontSize}px monospace`;
+
+    const startY = margin + headerSize + margin;
+    const maxLines = Math.floor((h - startY - margin * 2) / lineHeight);
+    const charsPerLine = Math.floor((w / 2 - margin * 2) / (fontSize * 0.6));
 
     const leftPage = generatePage(this.bookSeed, this.currentPage);
     const leftLines = leftPage.split("\n");
-    const lineHeight = 12;
-    const startY = 54;
-    const maxLines = Math.min(leftLines.length, Math.floor((RENDER_HEIGHT - 60) / lineHeight));
 
-    for (let i = 0; i < maxLines; i++) {
+    for (let i = 0; i < Math.min(leftLines.length, maxLines); i++) {
       const line = leftLines[i];
       if (!line) continue;
-      ctx.fillText(line.substring(0, 55), 30, startY + i * lineHeight);
+      ctx.fillText(line.substring(0, charsPerLine), margin, startY + i * lineHeight);
     }
 
-    // Right page
     const rightPageIdx = this.currentPage + 1;
     if (rightPageIdx < PAGES_PER_BOOK) {
       const rightPage = generatePage(this.bookSeed, rightPageIdx);
       const rightLines = rightPage.split("\n");
-      for (let i = 0; i < maxLines; i++) {
+      for (let i = 0; i < Math.min(rightLines.length, maxLines); i++) {
         const line = rightLines[i];
         if (!line) continue;
-        ctx.fillText(line.substring(0, 55), RENDER_WIDTH / 2 + 15, startY + i * lineHeight);
+        ctx.fillText(line.substring(0, charsPerLine), w / 2 + margin, startY + i * lineHeight);
       }
     }
 
     ctx.fillStyle = "#3a3020";
-    ctx.fillRect(RENDER_WIDTH / 2, 44, 1, RENDER_HEIGHT - 60);
+    ctx.fillRect(w / 2, startY - margin, 1, h - startY);
 
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "14px monospace";
+    ctx.font = `${Math.floor(fontSize * 1.1)}px monospace`;
     ctx.fillText(
       `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`,
-      RENDER_WIDTH / 2 - 50, RENDER_HEIGHT - 14
+      w / 2 - 60, h - margin
     );
-
-    ctx.font = "12px monospace";
-    ctx.fillText("← →  flip pages  ·  Esc  close", RENDER_WIDTH / 2 - 120, RENDER_HEIGHT - 34);
+    ctx.font = `${fontSize}px monospace`;
+    ctx.fillText("← →  flip pages  ·  Esc  close", w / 2 - 120, h - margin - lineHeight);
   }
 }
