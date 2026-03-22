@@ -21,7 +21,7 @@ export class BookViewer {
       inset: "0",
       background: "rgba(28, 23, 16, 0.97)",
       display: "none",
-      fontFamily: "monospace",
+      fontFamily: "Georgia, 'Times New Roman', Times, 'Noto Serif', serif",
       color: "#8b7d6b",
       zIndex: "10",
       padding: "3vh 3vw",
