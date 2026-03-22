@@ -1,28 +1,34 @@
 import { Game } from "@/game";
 
+const RENDER_SCALE = 0.5; // render at half resolution, scale up
+
 function bootstrap() {
-  const canvas = document.createElement("canvas");
-  canvas.style.display = "block";
-  document.body.appendChild(canvas);
+  const displayCanvas = document.createElement("canvas");
+  displayCanvas.style.display = "block";
+  displayCanvas.style.imageRendering = "pixelated";
+  document.body.appendChild(displayCanvas);
 
-  const ctx = canvas.getContext("2d")!;
+  const renderCanvas = document.createElement("canvas");
+  const renderCtx = renderCanvas.getContext("2d")!;
+  const displayCtx = displayCanvas.getContext("2d")!;
+  displayCtx.imageSmoothingEnabled = false;
 
-  let renderWidth = 0;
-  let renderHeight = 0;
+  let rw = 0;
+  let rh = 0;
 
   function resize() {
-    const dpr = window.devicePixelRatio || 1;
-    renderWidth = Math.floor(window.innerWidth * dpr);
-    renderHeight = Math.floor(window.innerHeight * dpr);
-    canvas.width = renderWidth;
-    canvas.height = renderHeight;
-    canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = window.innerHeight + "px";
+    displayCanvas.width = window.innerWidth;
+    displayCanvas.height = window.innerHeight;
+    rw = Math.floor(window.innerWidth * RENDER_SCALE);
+    rh = Math.floor(window.innerHeight * RENDER_SCALE);
+    renderCanvas.width = rw;
+    renderCanvas.height = rh;
+    displayCtx.imageSmoothingEnabled = false;
   }
   resize();
   window.addEventListener("resize", resize);
 
-  const game = new Game(ctx, canvas, () => ({ w: renderWidth, h: renderHeight }));
+  const game = new Game(renderCtx, displayCanvas, () => ({ w: rw, h: rh }));
 
   let lastTime = 0;
   function frame(time: number) {
@@ -31,6 +37,8 @@ function bootstrap() {
 
     game.update(dt);
     game.render();
+
+    displayCtx.drawImage(renderCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
 
     requestAnimationFrame(frame);
   }
