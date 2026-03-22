@@ -1,4 +1,5 @@
 import type { InputSystem } from "@/systems/input";
+import { RENDER_HEIGHT } from "@/config";
 import { MAP, MAP_SIZE } from "@/rendering/renderer";
 
 const MOVE_SPEED = 3.5;
@@ -11,15 +12,19 @@ export class PlayerSystem {
   dirY = 0;
   planeX = 0;
   planeY = 0.66;
+  pitch = 0; // vertical look offset in pixels
 
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
 
-    // Mouse rotation
-    const mouseDX = input.consumeMouseDX();
-    if (mouseDX !== 0) {
-      this.rotate(-mouseDX * MOUSE_SENSITIVITY);
+    // Mouse look
+    const mouse = input.consumeMouse();
+    if (mouse.dx !== 0) {
+      this.rotate(-mouse.dx * MOUSE_SENSITIVITY);
     }
+    // Pitch (vertical look) — clamped to ±half screen height
+    this.pitch -= mouse.dy * 1.5;
+    this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
 
     // W/S forward/back
     const fwd = input.forward;

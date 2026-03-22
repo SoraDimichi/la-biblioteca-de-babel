@@ -81,8 +81,10 @@ export class Renderer {
     this.flicker = 0.97 + Math.sin(this.flickerTime * 2.3) * 0.03;
     this.bookUnderCrosshair = null;
 
+    const pitchShift = Math.round(player.pitch);
+
     // Clear with floor/ceiling gradient
-    this.drawFloorCeiling(ctx);
+    this.drawFloorCeiling(ctx, pitchShift);
 
     const w = RENDER_WIDTH;
     const h = RENDER_HEIGHT;
@@ -148,8 +150,9 @@ export class Renderer {
         : sideDistY - deltaDistY;
 
       const lineHeight = Math.floor(h / Math.max(0.01, perpWallDist));
-      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
-      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+      const pitchShift = Math.round(player.pitch);
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift));
 
       // Store for book picking
       this.columnWallDist[x] = perpWallDist;
@@ -174,25 +177,22 @@ export class Renderer {
     // Draw shelves and books on the outer wall (type 1)
     this.drawBookshelves(ctx, player, world);
 
-    // Crosshair
+    // Crosshair at center
     ctx.fillStyle = "rgba(212,197,169,0.5)";
-    // Cursor crosshair at mouse position
-    const cx = CX;
-    const cy = CY;
-    ctx.fillStyle = "rgba(212,197,169,0.5)";
-    ctx.fillRect(cx - 4, cy, 9, 1);
-    ctx.fillRect(cx, cy - 4, 1, 9);
+    ctx.fillRect(CX - 4, CY, 9, 1);
+    ctx.fillRect(CX, CY - 4, 1, 9);
 
     this.drawBookTooltip(ctx);
   }
 
-  private drawFloorCeiling(ctx: CanvasRenderingContext2D) {
+  private drawFloorCeiling(ctx: CanvasRenderingContext2D, pitchShift: number) {
+    const horizon = Math.floor(RENDER_HEIGHT / 2 + pitchShift);
     // Ceiling (dark)
     ctx.fillStyle = `rgb(18,16,12)`;
-    ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT / 2);
+    ctx.fillRect(0, 0, RENDER_WIDTH, Math.max(0, horizon));
     // Floor (stone)
     ctx.fillStyle = `rgb(32,26,18)`;
-    ctx.fillRect(0, RENDER_HEIGHT / 2, RENDER_WIDTH, RENDER_HEIGHT / 2);
+    ctx.fillRect(0, Math.max(0, horizon), RENDER_WIDTH, RENDER_HEIGHT - horizon);
   }
 
   private drawBookshelves(ctx: CanvasRenderingContext2D, player: PlayerSystem, world: WorldGenerator) {

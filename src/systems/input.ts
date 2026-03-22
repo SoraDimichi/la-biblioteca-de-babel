@@ -5,6 +5,7 @@ export class InputSystem {
   private justPressed = new Set<string>();
   private _clicked = false;
   private _mouseDX = 0;
+  private _mouseDY = 0;
   private locked = false;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -31,6 +32,7 @@ export class InputSystem {
     document.addEventListener("mousemove", (e) => {
       if (this.locked) {
         this._mouseDX += e.movementX;
+        this._mouseDY += e.movementY;
       }
     });
   }
@@ -49,10 +51,12 @@ export class InputSystem {
     return v;
   }
 
-  consumeMouseDX(): number {
-    const d = this._mouseDX;
+  consumeMouse(): { dx: number; dy: number } {
+    const dx = this._mouseDX;
+    const dy = this._mouseDY;
     this._mouseDX = 0;
-    return d;
+    this._mouseDY = 0;
+    return { dx, dy };
   }
 
   consumeClick(): boolean {
