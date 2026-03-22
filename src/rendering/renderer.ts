@@ -94,6 +94,17 @@ function raySegIntersect(
   return { t, u };
 }
 
+// Floor height: rises from walls (0) to center (peak)
+const FLOOR_PEAK = 4.0; // height at center
+
+function getFloorHeight(px: number, py: number): number {
+  const dx = px - HEX_CX;
+  const dy = py - HEX_CY;
+  const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+  const t = 1 - Math.min(1, distFromCenter / (HEX_R - 0.5));
+  return t * FLOOR_PEAK;
+}
+
 // Wall colors: alternate light/dark per wall for depth
 const WALL_LIGHT: RGB = [61, 43, 31];
 const WALL_DARK: RGB = [45, 32, 23];
@@ -125,8 +136,10 @@ export class Renderer {
     const w = RENDER_WIDTH;
     const h = RENDER_HEIGHT;
 
-    // Floor & ceiling
-    const horizon = Math.floor(h / 2 + pitch);
+    // Floor & ceiling — horizon shifts with player height on slope
+    const playerH = getFloorHeight(player.posX, player.posY);
+    const horizonShift = Math.round(playerH * 15); // higher = see more floor
+    const horizon = Math.floor(h / 2 + pitch - horizonShift);
     ctx.fillStyle = `rgb(14,12,10)`;
     ctx.fillRect(0, 0, w, Math.max(0, horizon));
     ctx.fillStyle = `rgb(30,24,17)`;
@@ -161,11 +174,18 @@ export class Renderer {
         continue;
       }
 
-      // Perpendicular distance (same as nearestT for segment-based casting)
       const perpDist = nearestT;
       const lineHeight = Math.floor(h / Math.max(0.01, perpDist));
-      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitch));
-      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitch));
+
+      // Floor height at hit point and at player
+      const hitX = player.posX + rayDirX * nearestT;
+      const hitY = player.posY + rayDirY * nearestT;
+      const wallFloorH = getFloorHeight(hitX, hitY);
+      const playerFloorH = getFloorHeight(player.posX, player.posY);
+      const heightShift = Math.round((wallFloorH - playerFloorH) * lineHeight * 0.4);
+
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitch - heightShift));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitch - heightShift));
 
       this.colDist[x] = perpDist;
       this.colStart[x] = drawStart;
@@ -279,4 +299,4 @@ function rgb(c: RGB): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export { isInsideHex, HEX_CX, HEX_CY };
+export { isInsideHex, HEX_CX, HEX_CY, getFloorHeight };
