@@ -78,7 +78,7 @@ function raySegIntersect(
   return { t, u };
 }
 
-const FLOOR_H = 3.0;
+const FLOOR_H = 5.0;
 const VISIBLE_FLOORS = 8;
 
 function getAngleFromCenter(px: number, py: number): number {
