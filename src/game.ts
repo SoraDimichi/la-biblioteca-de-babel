@@ -73,20 +73,5 @@ export class Game {
     this.hud.render(ctx, w, h, this.player);
     this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
 
-    if (!this.input.isLocked && !this.bookViewer.visible) {
-      ctx.fillStyle = "rgba(10,10,15,0.6)";
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "#d4c5a9";
-      const titleSize = Math.max(14, Math.floor(h / 25));
-      ctx.font = `${titleSize}px monospace`;
-      const title = "Click to enter the Library";
-      const titleW = ctx.measureText(title).width;
-      ctx.fillText(title, (w - titleW) / 2, h / 2);
-      const subSize = Math.max(10, Math.floor(h / 40));
-      ctx.font = `${subSize}px monospace`;
-      const sub = "WASD move · Mouse look · Click book · Esc exit";
-      const subW = ctx.measureText(sub).width;
-      ctx.fillText(sub, (w - subW) / 2, h / 2 + titleSize * 1.5);
-    }
   }
 }
