@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, Text, TextStyle } from "pixi.js";
 import type { CameraSystem } from "@/systems/camera";
 import { pixelToHex } from "@/math/hex";
 

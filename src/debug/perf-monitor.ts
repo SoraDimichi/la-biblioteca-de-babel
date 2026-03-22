@@ -43,6 +43,17 @@ export class PerfMonitor {
   toggle() {
     this.visible = !this.visible;
     this.container.visible = this.visible;
+    if (this.visible) {
+      this.drawBackground();
+    }
+  }
+
+  private drawBackground() {
+    const w = 180;
+    const h = 70;
+    this.background.clear();
+    this.background.rect(0, 0, w, h);
+    this.background.fill({ color: 0x000000, alpha: 0.7 });
   }
 
   update(chunkCount: number) {
@@ -56,12 +67,5 @@ export class PerfMonitor {
 
     this.fpsText.text = `FPS: ${Math.round(fps)} (avg: ${Math.round(avgFps)})`;
     this.infoText.text = `Chunks: ${chunkCount}\nChildren: ${this.app.stage.children.length}`;
-
-    // Background
-    const w = 180;
-    const h = 70;
-    this.background.clear();
-    this.background.rect(0, 0, w, h);
-    this.background.fill({ color: 0x000000, alpha: 0.7 });
   }
 }

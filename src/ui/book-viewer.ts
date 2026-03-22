@@ -60,7 +60,6 @@ export class BookViewer {
     const w = this.screenWidth;
     const h = this.screenHeight;
     const padding = 40;
-    const pageWidth = (w - padding * 3) / 2;
 
     this.background.clear();
     this.background.rect(0, 0, w, h);
