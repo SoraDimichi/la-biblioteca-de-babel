@@ -110,7 +110,8 @@ export class Renderer {
 
     // Player's continuous height on the spiral
     const playerAngle = getAngleFromCenter(player.posX, player.posY);
-    const playerHeight = player.floor * FLOOR_H + (playerAngle / (Math.PI * 2)) * FLOOR_H;
+    const EYE_H = FLOOR_H * 0.4; // eye height: 40% up the wall
+    const playerHeight = player.floor * FLOOR_H + (playerAngle / (Math.PI * 2)) * FLOOR_H + EYE_H;
 
     // Background: dark void (the tower shaft)
     ctx.fillStyle = `rgb(6,5,8)`;
