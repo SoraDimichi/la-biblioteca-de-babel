@@ -76,13 +76,13 @@ export class BookViewer {
     Object.assign(this.leftPageNum.style, {
       color: "#d4c5a9",
       fontSize: numFont,
-      paddingTop: "1vh",
+      paddingBottom: "0.5vh",
       textAlign: "center",
       flexShrink: "0",
     });
 
-    leftCol.appendChild(this.leftPage);
     leftCol.appendChild(this.leftPageNum);
+    leftCol.appendChild(this.leftPage);
 
     // Right page column
     const rightCol = document.createElement("div");
@@ -107,13 +107,13 @@ export class BookViewer {
     Object.assign(this.rightPageNum.style, {
       color: "#d4c5a9",
       fontSize: numFont,
-      paddingTop: "1vh",
+      paddingBottom: "0.5vh",
       textAlign: "center",
       flexShrink: "0",
     });
 
-    rightCol.appendChild(this.rightPage);
     rightCol.appendChild(this.rightPageNum);
+    rightCol.appendChild(this.rightPage);
 
     pagesContainer.appendChild(leftCol);
     pagesContainer.appendChild(rightCol);
