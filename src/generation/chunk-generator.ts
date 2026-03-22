@@ -4,11 +4,14 @@ import { flatTopHexCorners, hexToPixel } from "@/math/hex";
 import { HexChunk, LODLevel } from "@/generation/hex-chunk";
 import { seedFromAddress } from "@/math/hash";
 import { SeededRandom } from "@/math/hash";
+import { deriveBookData } from "@/generation/book-data";
 import {
   HEX_RADIUS,
   WALL_HEIGHT,
   WALL_COUNT,
   SHELVES_PER_WALL,
+  BOOKS_PER_SHELF,
+  SHELF_HEIGHT,
   COLOR_FLOOR,
   COLOR_WALL,
   COLOR_SHELF,
@@ -99,6 +102,33 @@ function renderNear(chunk: HexChunk, floorColor: number) {
     for (let s = 0; s < SHELVES_PER_WALL; s++) {
       const shelfY = (s + 1) * (WALL_HEIGHT / (SHELVES_PER_WALL + 1));
       drawShelf(g, c1.x, c1.y, c2.x, c2.y, shelfY, COLOR_SHELF);
+
+      // Draw book spines on this shelf
+      const wallDx = c2.x - c1.x;
+      const wallDy = c2.y - c1.y;
+      const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
+      let offset = 2; // start offset from wall edge
+
+      for (let b = 0; b < BOOKS_PER_SHELF; b++) {
+        const bookData = deriveBookData({
+          hex: chunk.address,
+          wall: w,
+          shelf: s,
+          slot: b,
+        });
+
+        if (offset + bookData.width > wallLen - 2) break;
+
+        const t = offset / wallLen;
+        const bx = c1.x + wallDx * t;
+        const by = c1.y + wallDy * t;
+        const bookHeight = SHELF_HEIGHT - 3;
+
+        g.rect(bx - bookData.width / 2, by - shelfY - bookHeight, bookData.width, bookHeight);
+        g.fill({ color: bookData.color, alpha: isBack ? 0.85 : 0.35 });
+
+        offset += bookData.width + 1;
+      }
     }
   }
 
