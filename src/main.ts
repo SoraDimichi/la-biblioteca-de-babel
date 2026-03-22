@@ -1,20 +1,62 @@
-import { Application } from "pixi.js";
 import { Game } from "@/game";
+import { RENDER_WIDTH, RENDER_HEIGHT, COLOR_BG } from "@/config";
 
-async function bootstrap() {
-  const app = new Application();
-  await app.init({
-    background: 0x0a0a0f,
-    resizeTo: window,
-    antialias: true,
-    resolution: window.devicePixelRatio || 1,
-    autoDensity: true,
-  });
+function bootstrap() {
+  // Display canvas (fills the window)
+  const displayCanvas = document.createElement("canvas");
+  displayCanvas.style.display = "block";
+  displayCanvas.style.imageRendering = "pixelated";
+  document.body.appendChild(displayCanvas);
 
-  document.body.appendChild(app.canvas);
+  // Offscreen render canvas at logical resolution
+  const renderCanvas = document.createElement("canvas");
+  renderCanvas.width = RENDER_WIDTH;
+  renderCanvas.height = RENDER_HEIGHT;
 
-  const game = new Game(app);
-  game.start();
+  const renderCtx = renderCanvas.getContext("2d")!;
+  const displayCtx = displayCanvas.getContext("2d")!;
+  displayCtx.imageSmoothingEnabled = false;
+
+  function resize() {
+    displayCanvas.width = window.innerWidth;
+    displayCanvas.height = window.innerHeight;
+    displayCtx.imageSmoothingEnabled = false;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const game = new Game(renderCtx, displayCanvas);
+
+  let lastTime = 0;
+  function frame(time: number) {
+    const dt = Math.min((time - lastTime) / 1000, 0.05); // cap at 50ms
+    lastTime = time;
+
+    game.update(dt);
+    game.render();
+
+    // Scale render canvas to display
+    displayCtx.fillStyle = COLOR_BG;
+    displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+    // Maintain aspect ratio
+    const scale = Math.min(
+      displayCanvas.width / RENDER_WIDTH,
+      displayCanvas.height / RENDER_HEIGHT
+    );
+    const offsetX = (displayCanvas.width - RENDER_WIDTH * scale) / 2;
+    const offsetY = (displayCanvas.height - RENDER_HEIGHT * scale) / 2;
+
+    displayCtx.drawImage(
+      renderCanvas,
+      0, 0, RENDER_WIDTH, RENDER_HEIGHT,
+      offsetX, offsetY, RENDER_WIDTH * scale, RENDER_HEIGHT * scale
+    );
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
 }
 
 bootstrap();

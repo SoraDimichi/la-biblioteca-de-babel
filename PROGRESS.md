@@ -1,20 +1,20 @@
 # Progress Tracker
 
-## Current Milestone: COMPLETE
+## Current Milestone: COMPLETE (v2 redesign)
 
-## Completed Milestones
-- **Milestone 1-7:** All complete (see git log for details)
+## v2: First-Person Mode 7 Spiral Staircase
+Complete rewrite from top-down isometric to first-person pseudo-3D.
 
-## Iteration History
-- **Iteration 1:** Built all 7 milestones from scratch
-- **Iteration 2:** Fixed input edge detection, camera hex calculation, generation queue, book picker
-- **Iteration 3:** Cleaned dead code, unused imports, perf monitor optimization
-- **Iteration 4:** Added missing spec features (ladder/staircase per room, distance fog)
+### Completed
+- **Milestone 1:** Pure Canvas2D at 320x200 logical resolution, scaled to fit
+- **Milestone 2:** Mode 7 floor/ceiling with scanline perspective and distance fog
+- **Milestone 3:** Player movement along spiral with head bob
+- **Milestone 4:** Outer wall rendering with 5 shelves and colored book spines
+- **Milestone 5:** Void/abyss rendering with railing, distant light specs
+- **Milestone 6:** Book selection and full-screen Babel text viewer
+- **Milestone 7:** HUD with floor/step display, F3 perf monitor
 
-## Verification Results
-- `npx tsc --noEmit` — PASS (zero errors)
-- `npx vitest run` — PASS (40 tests across 7 files)
-- `npx vite build` — PASS
-
-## Blockers
-_(none)_
+### Verification
+- `npx tsc --noEmit` — PASS
+- `npx vitest run` — PASS (19 tests)
+- `npx vite build` — PASS (12KB bundle, no dependencies)

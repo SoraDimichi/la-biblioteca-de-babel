@@ -3,11 +3,12 @@ export class InputSystem {
   private justPressed = new Set<string>();
   private mouseX = 0;
   private mouseY = 0;
-  private scrollDelta = 0;
-  private mouseDown = false;
   private _clicked = false;
+  private canvasRect: DOMRect;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(private canvas: HTMLCanvasElement) {
+    this.canvasRect = canvas.getBoundingClientRect();
+
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) {
         this.justPressed.add(e.code);
@@ -18,49 +19,33 @@ export class InputSystem {
       this.keys.delete(e.code);
     });
     canvas.addEventListener("mousemove", (e) => {
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
+      this.canvasRect = canvas.getBoundingClientRect();
+      this.mouseX = e.clientX - this.canvasRect.left;
+      this.mouseY = e.clientY - this.canvasRect.top;
     });
-    canvas.addEventListener("wheel", (e) => {
-      this.scrollDelta += e.deltaY;
-      e.preventDefault();
-    }, { passive: false });
-    canvas.addEventListener("mousedown", () => {
-      this.mouseDown = true;
+    canvas.addEventListener("click", () => {
       this._clicked = true;
     });
-    canvas.addEventListener("mouseup", () => {
-      this.mouseDown = false;
-    });
   }
 
-  getMovementVector(): { x: number; y: number } {
-    let x = 0;
-    let y = 0;
-
-    if (this.keys.has("KeyW") || this.keys.has("ArrowUp")) y = -1;
-    if (this.keys.has("KeyS") || this.keys.has("ArrowDown")) y = 1;
-    if (this.keys.has("KeyA") || this.keys.has("ArrowLeft")) x = -1;
-    if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) x = 1;
-
-    // Normalize diagonal movement
-    const len = Math.sqrt(x * x + y * y);
-    if (len > 0) {
-      x /= len;
-      y /= len;
-    }
-
-    return { x, y };
+  get forward(): number {
+    let v = 0;
+    if (this.keys.has("KeyW") || this.keys.has("ArrowUp")) v += 1;
+    if (this.keys.has("KeyS") || this.keys.has("ArrowDown")) v -= 1;
+    return v;
   }
 
-  getMouseScreen(): { x: number; y: number } {
-    return { x: this.mouseX, y: this.mouseY };
+  get mouseNormX(): number {
+    if (this.canvasRect.width === 0) return 0;
+    return (this.mouseX / this.canvasRect.width) * 2 - 1; // -1 to 1
   }
 
-  consumeScroll(): number {
-    const delta = this.scrollDelta;
-    this.scrollDelta = 0;
-    return delta;
+  get mouseScreenX(): number {
+    return this.mouseX;
+  }
+
+  get mouseScreenY(): number {
+    return this.mouseY;
   }
 
   consumeClick(): boolean {
@@ -69,12 +54,12 @@ export class InputSystem {
     return clicked;
   }
 
-  isKeyDown(code: string): boolean {
-    return this.keys.has(code);
-  }
-
   wasJustPressed(code: string): boolean {
     return this.justPressed.has(code);
+  }
+
+  isKeyDown(code: string): boolean {
+    return this.keys.has(code);
   }
 
   endFrame() {

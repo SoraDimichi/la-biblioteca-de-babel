@@ -14,9 +14,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "pixi.js": "^8.17.1"
-  },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "typescript": "^5.9.3",
