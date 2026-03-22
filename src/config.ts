@@ -1,6 +1,3 @@
-// World
-export const STEPS_PER_FLOOR = 24;
-
 // Shelves & books
 export const SHELVES_PER_WALL = 5;
 export const BOOKS_PER_SHELF = 35;

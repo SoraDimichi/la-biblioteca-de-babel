@@ -1,5 +1,5 @@
 import { seedFromAddress, SeededRandom } from "@/math/hash";
-import { BOOK_SPINE_COLORS, STEPS_PER_FLOOR } from "@/config";
+import { BOOK_SPINE_COLORS } from "@/config";
 
 export interface BookAddress {
   floor: number;
@@ -14,6 +14,8 @@ export interface BookData {
   colorIndex: number;
   width: number;
 }
+
+const HEX_WALLS = 6;
 
 export function deriveBookData(address: BookAddress): BookData {
   const seed = seedFromAddress(
@@ -35,7 +37,7 @@ export function bookAddressFromWorldStep(
   shelf: number,
   slot: number
 ): BookAddress {
-  const floor = Math.floor(worldStep / STEPS_PER_FLOOR);
-  const segment = ((worldStep % STEPS_PER_FLOOR) + STEPS_PER_FLOOR) % STEPS_PER_FLOOR;
+  const floor = Math.floor(worldStep / HEX_WALLS);
+  const segment = ((worldStep % HEX_WALLS) + HEX_WALLS) % HEX_WALLS;
   return { floor, segment, shelf, slot };
 }

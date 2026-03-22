@@ -6,17 +6,13 @@ export function hash(a: number, b: number): number {
 }
 
 export function seedFromAddress(
-  q: number,
-  r: number,
-  y: number,
-  wall = 0,
+  floor: number,
+  segment: number,
   shelf = 0,
   slot = 0
 ): number {
-  let seed = hash(q + 10000, r + 10000);
-  seed = hash(seed, y + 10000);
-  seed = hash(seed, wall);
-  seed = hash(seed, shelf);
+  let seed = hash(floor + 10000, segment + 10000);
+  seed = hash(seed, shelf + 10000);
   seed = hash(seed, slot);
   return seed;
 }
@@ -29,7 +25,6 @@ export class SeededRandom {
   private s3: number;
 
   constructor(seed: number) {
-    // Initialize state from seed using splitmix32
     this.s0 = this.splitmix32(seed);
     this.s1 = this.splitmix32(this.s0);
     this.s2 = this.splitmix32(this.s1);
@@ -52,17 +47,13 @@ export class SeededRandom {
 
   next(): number {
     const result = (Math.imul(this.rotl(Math.imul(this.s1, 5), 7), 9)) >>> 0;
-
     const t = (this.s1 << 9) >>> 0;
-
     this.s2 = (this.s2 ^ this.s0) >>> 0;
     this.s3 = (this.s3 ^ this.s1) >>> 0;
     this.s1 = (this.s1 ^ this.s2) >>> 0;
     this.s0 = (this.s0 ^ this.s3) >>> 0;
-
     this.s2 = (this.s2 ^ t) >>> 0;
     this.s3 = this.rotl(this.s3, 11);
-
     return result / 0x100000000;
   }
 

@@ -72,10 +72,10 @@ describe("seedFromAddress", () => {
   });
 
   it("different book positions produce different seeds", () => {
-    const s1 = seedFromAddress(0, 0, 0, 0, 0, 0);
-    const s2 = seedFromAddress(0, 0, 0, 1, 0, 0);
-    const s3 = seedFromAddress(0, 0, 0, 0, 1, 0);
-    const s4 = seedFromAddress(0, 0, 0, 0, 0, 1);
+    const s1 = seedFromAddress(0, 0, 0, 0);
+    const s2 = seedFromAddress(0, 0, 0, 1);
+    const s3 = seedFromAddress(0, 0, 1, 0);
+    const s4 = seedFromAddress(0, 1, 0, 0);
     const seeds = new Set([s1, s2, s3, s4]);
     expect(seeds.size).toBe(4);
   });

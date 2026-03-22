@@ -1,16 +1,11 @@
 export class PerfMonitor {
-  visible = false;
+  private visible = false;
   private frameCount = 0;
   private currentFps = 0;
   private lastTime = performance.now();
 
-  constructor() {
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "F3") {
-        e.preventDefault();
-        this.visible = !this.visible;
-      }
-    });
+  toggle() {
+    this.visible = !this.visible;
   }
 
   update() {

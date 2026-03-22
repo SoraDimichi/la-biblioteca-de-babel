@@ -2,7 +2,6 @@ import { seedFromAddress, SeededRandom } from "@/math/hash";
 import {
   SHELVES_PER_WALL,
   BOOKS_PER_SHELF,
-  STEPS_PER_FLOOR,
   BOOK_SPINE_COLORS,
 } from "@/config";
 
@@ -17,16 +16,24 @@ export interface StepData {
   shelves: BookInfo[][];
 }
 
+const HEX_WALLS = 6;
+
 export class WorldGenerator {
   private cache = new Map<number, StepData>();
 
   getStep(worldStep: number): StepData | undefined {
-    if (this.cache.has(worldStep)) return this.cache.get(worldStep);
+    const cached = this.cache.get(worldStep);
+    if (cached) {
+      // Move to end for LRU behavior (delete + re-insert)
+      this.cache.delete(worldStep);
+      this.cache.set(worldStep, cached);
+      return cached;
+    }
 
     const data = this.generateStep(worldStep);
     this.cache.set(worldStep, data);
 
-    // Keep cache bounded
+    // Evict oldest entries if cache too large
     if (this.cache.size > 500) {
       const first = this.cache.keys().next().value;
       if (first !== undefined) this.cache.delete(first);
@@ -35,13 +42,9 @@ export class WorldGenerator {
     return data;
   }
 
-  update(_playerPosition: number) {
-    // Generation is on-demand via getStep
-  }
-
   private generateStep(worldStep: number): StepData {
-    const floor = Math.floor(worldStep / STEPS_PER_FLOOR);
-    const segment = ((worldStep % STEPS_PER_FLOOR) + STEPS_PER_FLOOR) % STEPS_PER_FLOOR;
+    const floor = Math.floor(worldStep / HEX_WALLS);
+    const wallIdx = ((worldStep % HEX_WALLS) + HEX_WALLS) % HEX_WALLS;
 
     const shelves: BookInfo[][] = [];
 
@@ -49,7 +52,7 @@ export class WorldGenerator {
       const shelfBooks: BookInfo[] = [];
 
       for (let b = 0; b < BOOKS_PER_SHELF; b++) {
-        const bookSeed = seedFromAddress(floor, segment, s, b);
+        const bookSeed = seedFromAddress(floor, wallIdx, s, b);
         const rng = new SeededRandom(bookSeed);
         const colorIndex = rng.nextInt(0, BOOK_SPINE_COLORS.length - 1);
         const width = 2 + rng.nextInt(0, 4);

@@ -8,6 +8,9 @@ export class BookViewer {
   private bookSeed = 0;
   private bookAddress: BookAddress | null = null;
   private currentPage = 0;
+  private cachedLeft = "";
+  private cachedRight = "";
+  private cachedPageIdx = -1;
 
   open(address: BookAddress) {
     this.bookAddress = address;
@@ -15,6 +18,7 @@ export class BookViewer {
       address.floor, address.segment, address.shelf, address.slot
     );
     this.currentPage = 0;
+    this.cachedPageIdx = -1;
     this.visible = true;
   }
 
@@ -29,8 +33,20 @@ export class BookViewer {
     this.currentPage = newPage;
   }
 
+  private ensurePagesCached() {
+    if (this.cachedPageIdx === this.currentPage) return;
+    this.cachedLeft = generatePage(this.bookSeed, this.currentPage);
+    const rightIdx = this.currentPage + 1;
+    this.cachedRight = rightIdx < PAGES_PER_BOOK
+      ? generatePage(this.bookSeed, rightIdx)
+      : "";
+    this.cachedPageIdx = this.currentPage;
+  }
+
   render(ctx: CanvasRenderingContext2D, w: number, h: number) {
     if (!this.visible || !this.bookAddress) return;
+
+    this.ensurePagesCached();
 
     const fontSize = Math.max(10, Math.floor(h / 50));
     const headerSize = Math.max(12, Math.floor(h / 35));
@@ -55,19 +71,15 @@ export class BookViewer {
     const maxLines = Math.floor((h - startY - margin * 2) / lineHeight);
     const charsPerLine = Math.floor((w / 2 - margin * 2) / (fontSize * 0.6));
 
-    const leftPage = generatePage(this.bookSeed, this.currentPage);
-    const leftLines = leftPage.split("\n");
-
+    const leftLines = this.cachedLeft.split("\n");
     for (let i = 0; i < Math.min(leftLines.length, maxLines); i++) {
       const line = leftLines[i];
       if (!line) continue;
       ctx.fillText(line.substring(0, charsPerLine), margin, startY + i * lineHeight);
     }
 
-    const rightPageIdx = this.currentPage + 1;
-    if (rightPageIdx < PAGES_PER_BOOK) {
-      const rightPage = generatePage(this.bookSeed, rightPageIdx);
-      const rightLines = rightPage.split("\n");
+    if (this.cachedRight) {
+      const rightLines = this.cachedRight.split("\n");
       for (let i = 0; i < Math.min(rightLines.length, maxLines); i++) {
         const line = rightLines[i];
         if (!line) continue;
@@ -80,11 +92,13 @@ export class BookViewer {
 
     ctx.fillStyle = "#d4c5a9";
     ctx.font = `${Math.floor(fontSize * 1.1)}px monospace`;
-    ctx.fillText(
-      `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`,
-      w / 2 - 60, h - margin
-    );
+    const pageText = `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`;
+    const pageW = ctx.measureText(pageText).width;
+    ctx.fillText(pageText, (w - pageW) / 2, h - margin);
+
     ctx.font = `${fontSize}px monospace`;
-    ctx.fillText("← →  flip pages  ·  Esc  close", w / 2 - 120, h - margin - lineHeight);
+    const helpText = "← →  flip pages  ·  Esc  close";
+    const helpW = ctx.measureText(helpText).width;
+    ctx.fillText(helpText, (w - helpW) / 2, h - margin - lineHeight);
   }
 }

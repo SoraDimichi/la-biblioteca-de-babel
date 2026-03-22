@@ -1,5 +1,5 @@
 import {
-  SHELVES_PER_WALL, BOOK_SPINE_COLORS, STEPS_PER_FLOOR,
+  SHELVES_PER_WALL, BOOK_SPINE_COLORS,
   type RGB,
 } from "@/config";
 import type { PlayerSystem } from "@/systems/player";
@@ -17,6 +17,7 @@ export interface BookHit {
 const HEX_CX = 16;
 const HEX_CY = 16;
 const HEX_R = 5;
+const HEX_WALLS = 6;
 
 interface WallSeg {
   x1: number; y1: number;
@@ -26,37 +27,39 @@ interface WallSeg {
 }
 
 const WALLS: WallSeg[] = [];
-const HEX_CORNERS: { x: number; y: number }[] = [];
 
-for (let i = 0; i < 6; i++) {
-  const angle = (Math.PI / 3) * i;
-  HEX_CORNERS.push({
-    x: HEX_CX + HEX_R * Math.cos(angle),
-    y: HEX_CY + HEX_R * Math.sin(angle),
-  });
+{
+  const corners: { x: number; y: number }[] = [];
+  for (let i = 0; i < HEX_WALLS; i++) {
+    const angle = (Math.PI / 3) * i;
+    corners.push({
+      x: HEX_CX + HEX_R * Math.cos(angle),
+      y: HEX_CY + HEX_R * Math.sin(angle),
+    });
+  }
+
+  for (let i = 0; i < HEX_WALLS; i++) {
+    const c1 = corners[i]!;
+    const c2 = corners[(i + 1) % HEX_WALLS]!;
+    const dx = c2.x - c1.x;
+    const dy = c2.y - c1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    let nx = -dy / len;
+    let ny = dx / len;
+    const midX = (c1.x + c2.x) / 2;
+    const midY = (c1.y + c2.y) / 2;
+    if ((HEX_CX - midX) * nx + (HEX_CY - midY) * ny < 0) { nx = -nx; ny = -ny; }
+    WALLS.push({ x1: c1.x, y1: c1.y, x2: c2.x, y2: c2.y, wallIndex: i, nx, ny });
+  }
 }
 
-for (let i = 0; i < 6; i++) {
-  const c1 = HEX_CORNERS[i]!;
-  const c2 = HEX_CORNERS[(i + 1) % 6]!;
-  const dx = c2.x - c1.x;
-  const dy = c2.y - c1.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  let nx = -dy / len;
-  let ny = dx / len;
-  const midX = (c1.x + c2.x) / 2;
-  const midY = (c1.y + c2.y) / 2;
-  if ((HEX_CX - midX) * nx + (HEX_CY - midY) * ny < 0) { nx = -nx; ny = -ny; }
-  WALLS.push({ x1: c1.x, y1: c1.y, x2: c2.x, y2: c2.y, wallIndex: i, nx, ny });
-}
-
+// Uses precomputed normals — no per-call sqrt
 function isInsideHex(px: number, py: number): boolean {
   for (const wall of WALLS) {
-    const wallDx = wall.x2 - wall.x1;
-    const wallDy = wall.y2 - wall.y1;
-    const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
-    const dist = ((px - wall.x1) * (-wallDy / wallLen) + (py - wall.y1) * (wallDx / wallLen));
-    if (dist < 0.2) return false;
+    const dx = px - wall.x1;
+    const dy = py - wall.y1;
+    const dot = dx * wall.nx + dy * wall.ny;
+    if (dot < 0.2) return false;
   }
   return true;
 }
@@ -90,10 +93,8 @@ export class Renderer {
   private flicker = 1.0;
   bookUnderCrosshair: BookHit | null = null;
 
-  constructor() {}
-
-  render(ctx: CanvasRenderingContext2D, w: number, h: number, player: PlayerSystem, world: WorldGenerator) {
-    this.flickerTime += 0.016;
+  render(ctx: CanvasRenderingContext2D, w: number, h: number, player: PlayerSystem, world: WorldGenerator, dt = 0.016) {
+    this.flickerTime += dt;
     this.flicker = 0.97 + Math.sin(this.flickerTime * 2.3) * 0.03;
     this.bookUnderCrosshair = null;
 
@@ -105,7 +106,6 @@ export class Renderer {
     const EYE_H = FLOOR_H * 0.4;
     const playerHeight = player.floor * FLOOR_H + (playerAngle / (Math.PI * 2)) * FLOOR_H + EYE_H;
 
-    // Background
     ctx.fillStyle = `rgb(6,5,8)`;
     ctx.fillRect(0, 0, w, h);
 
@@ -118,7 +118,7 @@ export class Renderer {
       let nearestWall = -1;
       let nearestU = 0;
 
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < HEX_WALLS; i++) {
         const wall = WALLS[i]!;
         const hit = raySegIntersect(
           player.posX, player.posY, rayDirX, rayDirY,
@@ -172,12 +172,11 @@ export class Renderer {
       }
     }
 
-    // Crosshair
     ctx.fillStyle = "rgba(212,197,169,0.5)";
     ctx.fillRect(cx - 4, cy, 9, 1);
     ctx.fillRect(cx, cy - 4, 1, 9);
 
-    this.drawBookTooltip(ctx, cx, cy);
+    this.drawBookTooltip(ctx, cx, cy, h);
   }
 
   private drawColumnBooks(
@@ -191,7 +190,7 @@ export class Renderer {
     const wallHeight = drawEnd - drawStart;
     if (wallHeight <= 4) return;
 
-    const worldStep = floorNum * 6 + wallIdx;
+    const worldStep = floorNum * HEX_WALLS + wallIdx;
     const stepData = world.getStep(worldStep);
     if (!stepData) return;
 
@@ -249,12 +248,15 @@ export class Renderer {
     ];
   }
 
-  private drawBookTooltip(ctx: CanvasRenderingContext2D, cx: number, cy: number) {
+  private drawBookTooltip(ctx: CanvasRenderingContext2D, cx: number, cy: number, h: number) {
     const hit = this.bookUnderCrosshair;
     if (!hit) return;
+    const fontSize = Math.max(12, Math.floor(h / 40));
     ctx.fillStyle = "rgba(212,197,169,0.8)";
-    ctx.font = "14px monospace";
-    ctx.fillText(`Floor ${hit.floor} · Wall ${hit.segment} · Shelf ${hit.shelf} · Book ${hit.slot}`, cx - 120, cy + 24);
+    ctx.font = `${fontSize}px monospace`;
+    const text = `Floor ${hit.floor} · Wall ${hit.segment} · Shelf ${hit.shelf} · Book ${hit.slot}`;
+    const metrics = ctx.measureText(text);
+    ctx.fillText(text, cx - metrics.width / 2, cy + fontSize * 1.5);
   }
 }
 

@@ -1,6 +1,6 @@
 import { Game } from "@/game";
 
-const RENDER_SCALE = 0.5; // render at half resolution, scale up
+const RENDER_SCALE = 0.5;
 
 function bootstrap() {
   const displayCanvas = document.createElement("canvas");
@@ -9,8 +9,11 @@ function bootstrap() {
   document.body.appendChild(displayCanvas);
 
   const renderCanvas = document.createElement("canvas");
-  const renderCtx = renderCanvas.getContext("2d")!;
-  const displayCtx = displayCanvas.getContext("2d")!;
+  const renderCtxMaybe = renderCanvas.getContext("2d");
+  const displayCtxMaybe = displayCanvas.getContext("2d");
+  if (!renderCtxMaybe || !displayCtxMaybe) throw new Error("Canvas 2D not supported");
+  const renderCtx = renderCtxMaybe;
+  const displayCtx = displayCtxMaybe;
   displayCtx.imageSmoothingEnabled = false;
 
   let rw = 0;
