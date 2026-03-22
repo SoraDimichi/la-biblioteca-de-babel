@@ -1,5 +1,5 @@
 import { Container } from "pixi.js";
-import { hexKey, hexDistance, type HexCoord } from "@/math/hex";
+import { hexKey, hexDistance, pixelToHex, type HexCoord } from "@/math/hex";
 import { HexChunk, LODLevel } from "@/generation/hex-chunk";
 import { generateChunk } from "@/generation/chunk-generator";
 import type { CameraSystem } from "@/systems/camera";
@@ -24,7 +24,10 @@ export class WorldManager {
   update(camera: CameraSystem) {
     const floor = camera.currentFloor;
     const visibleHexes = camera.getVisibleHexes(CHUNK_LOAD_RADIUS);
-    const cameraHex: HexCoord = { q: Math.round(camera.x / 180), r: Math.round(camera.y / 208) };
+    const cameraHex = pixelToHex(camera.x, camera.y);
+
+    // Reset queue each frame
+    this.generationQueue.length = 0;
 
     // Queue chunks that need loading
     for (const hex of visibleHexes) {

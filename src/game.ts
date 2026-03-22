@@ -79,19 +79,21 @@ export class Game {
 
   private update(dt: number) {
     // Handle escape to close book viewer
-    if (this.uiManager.isReading && this.input.isKeyDown("Escape")) {
+    if (this.uiManager.isReading && this.input.wasJustPressed("Escape")) {
       this.uiManager.closeBook();
+      this.input.endFrame();
       return;
     }
 
     // Handle page flipping when reading
     if (this.uiManager.isReading) {
-      if (this.input.isKeyDown("ArrowRight")) {
+      if (this.input.wasJustPressed("ArrowRight")) {
         this.bookViewer.flipPage(2);
       }
-      if (this.input.isKeyDown("ArrowLeft")) {
+      if (this.input.wasJustPressed("ArrowLeft")) {
         this.bookViewer.flipPage(-2);
       }
+      this.input.endFrame();
       return;
     }
 
@@ -120,5 +122,7 @@ export class Game {
       -this.camera.y * this.camera.zoom + this.app.screen.height / 2
     );
     this.world.scale.set(this.camera.zoom);
+
+    this.input.endFrame();
   }
 }

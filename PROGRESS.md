@@ -3,25 +3,22 @@
 ## Current Milestone: COMPLETE
 
 ## Completed Milestones
-- **Milestone 1: Project Setup + Test Infrastructure** (iteration 1)
-  - Vite + PixiJS v8 + TypeScript + Vitest + Playwright scaffolded
-- **Milestone 2: Math Foundation + Single Hex Room** (iteration 1)
-  - Hex math, isometric projection, room renderer
-- **Milestone 3: Camera & Input** (iteration 1)
-  - WASD movement, scroll zoom, smooth lerp
-- **Milestone 4: Infinite World** (iteration 1)
-  - Chunk-based generation, seeded RNG, culling, LOD
-- **Milestone 5: Room Details & LOD** (iteration 1)
-  - Book spines with deterministic colors, object pooling
-- **Milestone 6: Book Interaction** (iteration 1)
-  - Babel text generator, book viewer, UI state machine
-- **Milestone 7: Atmosphere & Polish** (iteration 1)
-  - Sepia filter, vignette, light flicker, HUD, perf monitor
+- **Milestone 1-7:** All complete (see git log for details)
+
+## Iteration 2 Bugfixes
+- Fixed WorldManager using hardcoded magic numbers instead of `pixelToHex()` for camera hex
+- Fixed generation queue growing unbounded (now cleared each frame)
+- Fixed floor change (Q/E) firing every frame — now edge-triggered via `wasJustPressed()`
+- Fixed page flip (arrow keys in book viewer) firing every frame — now edge-triggered
+- Fixed Escape key handling — now edge-triggered
+- Improved BookPicker to calculate wall from cursor angle and slot/shelf from position
+- Removed unused `screenToWorld` import from camera
+- Added `endFrame()` to InputSystem for proper per-frame state clearing
 
 ## Verification Results
 - `npx tsc --noEmit` — PASS (zero errors)
 - `npx vitest run` — PASS (40 tests across 7 files)
-- `npx vite build` — PASS (337KB game bundle)
+- `npx vite build` — PASS (338KB game bundle)
 
 ## Blockers
 _(none)_

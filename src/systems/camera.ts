@@ -6,7 +6,6 @@ import {
   ZOOM_SPEED,
 } from "@/config";
 import { pixelToHex, type HexCoord, hexSpiral } from "@/math/hex";
-import { screenToWorld } from "@/math/isometric";
 import type { InputSystem } from "@/systems/input";
 
 export class CameraSystem {
@@ -42,9 +41,12 @@ export class CameraSystem {
     this.targetX += move.x * speed;
     this.targetY += move.y * speed;
 
-    // Floor transitions (discrete)
-    if (move.z !== 0) {
-      this.targetZ += move.z;
+    // Floor transitions (discrete, edge-triggered)
+    if (input.wasJustPressed("KeyQ") || input.wasJustPressed("PageUp")) {
+      this.targetZ += 1;
+    }
+    if (input.wasJustPressed("KeyE") || input.wasJustPressed("PageDown")) {
+      this.targetZ -= 1;
     }
 
     // Zoom
