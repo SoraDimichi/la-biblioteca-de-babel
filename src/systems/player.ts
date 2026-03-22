@@ -1,28 +1,26 @@
 import type { InputSystem } from "@/systems/input";
 import { RENDER_HEIGHT } from "@/config";
-import { MAP, MAP_SIZE } from "@/rendering/renderer";
+import { MAP, MAP_SIZE, getFloorHeight } from "@/rendering/renderer";
 
 const MOVE_SPEED = 3.5;
 const MOUSE_SENSITIVITY = 0.003;
 
 export class PlayerSystem {
+  // Spawn inside the hex room (center of hex at 16, 20)
   posX = 16;
-  posY = 5.5;
-  dirX = -1;
+  posY = 20;
+  dirX = 1;
   dirY = 0;
   planeX = 0;
   planeY = 0.66;
-  pitch = 0; // vertical look offset in pixels
+  pitch = 0;
 
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
 
     // Mouse look
     const mouse = input.consumeMouse();
-    if (mouse.dx !== 0) {
-      this.rotate(-mouse.dx * MOUSE_SENSITIVITY);
-    }
-    // Pitch (vertical look) — clamped to ±half screen height
+    if (mouse.dx !== 0) this.rotate(-mouse.dx * MOUSE_SENSITIVITY);
     this.pitch -= mouse.dy * 1.5;
     this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
 
@@ -50,11 +48,9 @@ export class PlayerSystem {
   private rotate(angle: number) {
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-
     const od = this.dirX;
     this.dirX = this.dirX * cos - this.dirY * sin;
     this.dirY = od * sin + this.dirY * cos;
-
     const op = this.planeX;
     this.planeX = this.planeX * cos - this.planeY * sin;
     this.planeY = op * sin + this.planeY * cos;
