@@ -12,7 +12,9 @@ export class BookViewer {
   private leftPage: HTMLPreElement;
   private rightPage: HTMLPreElement;
   private header: HTMLDivElement;
-  private hint: HTMLDivElement;
+  private hint: HTMLSpanElement;
+  private leftPageNum: HTMLSpanElement;
+  private rightPageNum: HTMLSpanElement;
 
   constructor() {
     this.overlay = document.createElement("div");
@@ -73,18 +75,32 @@ export class BookViewer {
     pagesContainer.appendChild(this.rightPage);
     this.overlay.appendChild(pagesContainer);
 
-    this.hint = document.createElement("div");
-    Object.assign(this.hint.style, {
+    const footer = document.createElement("div");
+    Object.assign(footer.style, {
       position: "absolute",
-      bottom: "1.5vh",
+      bottom: "0",
       left: "0",
       right: "0",
-      textAlign: "center",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "1.5vh 3vw",
       color: "#d4c5a9",
       fontSize: "clamp(10px, 1.4vh, 16px)",
+      fontFamily: "Georgia, 'Times New Roman', Times, serif",
     });
+
+    this.leftPageNum = document.createElement("span");
+    this.rightPageNum = document.createElement("span");
+
+    this.hint = document.createElement("span");
     this.hint.textContent = "A / D  flip pages  ·  Esc  close";
-    this.overlay.appendChild(this.hint);
+    this.hint.style.opacity = "0.6";
+
+    footer.appendChild(this.leftPageNum);
+    footer.appendChild(this.hint);
+    footer.appendChild(this.rightPageNum);
+    this.overlay.appendChild(footer);
 
     document.body.appendChild(this.overlay);
   }
@@ -116,10 +132,16 @@ export class BookViewer {
 
   private renderPages() {
     this.leftPage.textContent = generatePage(this.bookSeed, this.currentPage);
+    this.leftPageNum.textContent = String(this.currentPage + 1);
+
     const rightIdx = this.currentPage + 1;
-    this.rightPage.textContent = rightIdx < PAGES_PER_BOOK
-      ? generatePage(this.bookSeed, rightIdx)
-      : "";
+    if (rightIdx < PAGES_PER_BOOK) {
+      this.rightPage.textContent = generatePage(this.bookSeed, rightIdx);
+      this.rightPageNum.textContent = String(rightIdx + 1);
+    } else {
+      this.rightPage.textContent = "";
+      this.rightPageNum.textContent = "";
+    }
   }
 
   // No-op: rendering is done via DOM, not canvas
