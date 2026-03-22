@@ -77,7 +77,7 @@ function raySegIntersect(
 }
 
 // Spiral: height per floor
-const FLOOR_H = 2.5;
+const FLOOR_H = 5.0;
 const VISIBLE_FLOORS = 8; // how many floors above/below to render
 
 function getAngleFromCenter(px: number, py: number): number {
