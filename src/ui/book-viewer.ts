@@ -25,6 +25,7 @@ export class BookViewer {
       fontFamily: "Georgia, 'Times New Roman', Times, 'Noto Serif', serif",
       color: "#8b7d6b",
       zIndex: "10",
+      cursor: "none",
       padding: "3vh 3vw",
       boxSizing: "border-box",
       overflow: "hidden",
@@ -75,8 +76,9 @@ export class BookViewer {
     Object.assign(this.leftPageNum.style, {
       color: "#d4c5a9",
       fontSize: numFont,
-      paddingTop: "0.8vh",
-      textAlign: "left",
+      paddingTop: "1vh",
+      textAlign: "center",
+      flexShrink: "0",
     });
 
     leftCol.appendChild(this.leftPage);
@@ -105,8 +107,9 @@ export class BookViewer {
     Object.assign(this.rightPageNum.style, {
       color: "#d4c5a9",
       fontSize: numFont,
-      paddingTop: "0.8vh",
-      textAlign: "right",
+      paddingTop: "1vh",
+      textAlign: "center",
+      flexShrink: "0",
     });
 
     rightCol.appendChild(this.rightPage);
