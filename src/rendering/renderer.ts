@@ -14,57 +14,39 @@ export interface BookHit {
   slot: number;
 }
 
-// Map layout: hexagonal room, 6 sides all with bookshelves.
-// Interior divided into 6 triangular stair flights, each rising from wall to center.
-// 0 = walkable (stairs), 1 = bookshelf wall, 2 = void/outside
+// Simple hex room: 6 bookshelf walls, flat floor inside.
+// 0 = walkable, 1 = bookshelf wall, 2 = outside
 const MAP_SIZE = 32;
 const MAP: number[][] = [];
-const FLOOR_H: number[][] = [];
 const HEX_CX = MAP_SIZE / 2;
 const HEX_CY = MAP_SIZE / 2;
-const HEX_R = 12;
+const HEX_R = 10;
 
 function initMap() {
   for (let y = 0; y < MAP_SIZE; y++) {
     MAP[y] = new Array(MAP_SIZE).fill(2);
-    FLOOR_H[y] = new Array(MAP_SIZE).fill(0);
   }
 
   for (let y = 0; y < MAP_SIZE; y++) {
     for (let x = 0; x < MAP_SIZE; x++) {
       const dx = x - HEX_CX + 0.5;
       const dy = y - HEX_CY + 0.5;
-
       const q = (2 / 3) * dx;
       const r = (-1 / 3) * dx + (Math.sqrt(3) / 3) * dy;
       const hexDist = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
 
       if (hexDist > HEX_R) continue;
 
-      const distFromCenter = Math.sqrt(dx * dx + dy * dy);
-
-      if (hexDist > HEX_R - 1.5) {
-        // Outer ring: bookshelf walls on all 6 sides
-        MAP[y]![x] = 1;
+      if (hexDist > HEX_R - 1.2) {
+        MAP[y]![x] = 1; // wall
       } else {
-        // Interior: walkable stairs
-        MAP[y]![x] = 0;
-        // Floor rises from outer wall toward center
-        const t = 1 - distFromCenter / (HEX_R - 1);
-        FLOOR_H[y]![x] = Math.max(0, t * 4.0);
+        MAP[y]![x] = 0; // floor
       }
     }
   }
 }
 
 initMap();
-
-function getFloorHeight(x: number, y: number): number {
-  const mx = Math.floor(x);
-  const my = Math.floor(y);
-  if (mx < 0 || mx >= MAP_SIZE || my < 0 || my >= MAP_SIZE) return 0;
-  return FLOOR_H[my]?.[mx] ?? 0;
-}
 
 // Wall colors
 const WALL_COLORS: Record<number, { light: RGB; dark: RGB }> = {
@@ -169,14 +151,8 @@ export class Renderer {
 
       const lineHeight = Math.floor(h / Math.max(0.01, perpWallDist));
       const pitchShift = Math.round(player.pitch);
-
-      // Shift wall vertically based on floor height difference (stairs!)
-      const wallFloorH = getFloorHeight(mapX, mapY);
-      const playerFloorH = getFloorHeight(player.posX, player.posY);
-      const heightShift = Math.round((wallFloorH - playerFloorH) * lineHeight * 0.5);
-
-      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift - heightShift));
-      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift - heightShift));
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2 + pitchShift));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2 + pitchShift));
 
       // Store for book picking
       this.columnWallDist[x] = perpWallDist;
@@ -330,4 +306,4 @@ function rgb(c: RGB): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export { MAP, MAP_SIZE, FLOOR_H, getFloorHeight };
+export { MAP, MAP_SIZE };
