@@ -72,14 +72,18 @@ export class Game {
     this.hud.render(ctx, w, h, this.player);
     this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
 
-    // After Escape releases pointer lock, show a subtle hint
+    // When pointer not locked, show crosshair as a visible dot and hint
     if (!this.input.isLocked && !this.bookViewer.visible) {
-      const fontSize = Math.max(10, Math.floor(h / 50));
-      ctx.fillStyle = "rgba(212,197,169,0.4)";
+      // Dim overlay
+      ctx.fillStyle = "rgba(10,10,15,0.3)";
+      ctx.fillRect(0, 0, w, h);
+
+      const fontSize = Math.max(12, Math.floor(h / 40));
+      ctx.fillStyle = "rgba(212,197,169,0.7)";
       ctx.font = `${fontSize}px monospace`;
       const text = "click to look around";
       const tw = ctx.measureText(text).width;
-      ctx.fillText(text, (w - tw) / 2, h - fontSize);
+      ctx.fillText(text, (w - tw) / 2, h / 2 + fontSize);
     }
   }
 }

@@ -18,12 +18,17 @@ export class InputSystem {
       this.keys.delete(e.code);
     });
 
-    canvas.addEventListener("click", () => {
+    // Lock pointer on any click — canvas or document
+    const tryLock = () => {
       if (!this.locked) {
         canvas.requestPointerLock();
       } else {
         this._clicked = true;
       }
+    };
+    canvas.addEventListener("mousedown", tryLock);
+    document.addEventListener("mousedown", () => {
+      if (!this.locked) canvas.requestPointerLock();
     });
 
     document.addEventListener("pointerlockchange", () => {
