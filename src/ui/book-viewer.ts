@@ -92,9 +92,6 @@ export class BookViewer {
 
     ctx.fillStyle = "#d4c5a9";
     ctx.font = `${Math.floor(fontSize * 1.1)}px monospace`;
-    const pageText = `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`;
-    const pageW = ctx.measureText(pageText).width;
-    ctx.fillText(pageText, (w - pageW) / 2, h - margin);
 
     ctx.font = `${fontSize}px monospace`;
     const helpText = "← →  flip pages  ·  Esc  close";
