@@ -37,14 +37,18 @@ export class Game {
 
     if (this.input.wasJustPressed("F3")) this.perfMonitor.toggle();
 
+    // Book mode: A/D flip, Escape closes (browser also releases pointer lock)
     if (this.bookViewer.visible) {
-      if (this.input.wasJustPressed("Escape")) this.bookViewer.close();
+      if (this.input.wasJustPressed("Escape")) {
+        this.bookViewer.close();
+      }
       if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);
       if (this.input.wasJustPressed("KeyA")) this.bookViewer.flipPage(-2);
       this.input.endFrame();
       return;
     }
 
+    // Tower mode
     this.player.update(dt, this.input);
 
     if (this.input.consumeClick()) {
@@ -52,6 +56,7 @@ export class Game {
       if (hit) {
         const addr = bookAddressFromWorldStep(hit.worldStep, hit.shelf, hit.slot);
         this.bookViewer.open(addr);
+        // Pointer lock stays active — no cursor needed for book reading
       }
     }
 
@@ -60,8 +65,21 @@ export class Game {
 
   render() {
     const { w, h } = this.getSize();
-    this.renderer.render(this.ctx, w, h, this.player, this.world, this.lastDt);
-    this.hud.render(this.ctx, w, h, this.player);
-    this.perfMonitor.render(this.ctx, w, h, this.world.cacheSize);
+    const ctx = this.ctx;
+
+    // Always render the tower
+    this.renderer.render(ctx, w, h, this.player, this.world, this.lastDt);
+    this.hud.render(ctx, w, h, this.player);
+    this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
+
+    // After Escape releases pointer lock, show a subtle hint
+    if (!this.input.isLocked && !this.bookViewer.visible) {
+      const fontSize = Math.max(10, Math.floor(h / 50));
+      ctx.fillStyle = "rgba(212,197,169,0.4)";
+      ctx.font = `${fontSize}px monospace`;
+      const text = "click to look around";
+      const tw = ctx.measureText(text).width;
+      ctx.fillText(text, (w - tw) / 2, h - fontSize);
+    }
   }
 }

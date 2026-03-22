@@ -4,11 +4,11 @@ export class InputSystem {
   private _clicked = false;
   private _mouseDX = 0;
   private _mouseDY = 0;
-  private mouseOver = false;
+  private locked = false;
+  private canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
-    // Hide cursor over canvas
-    canvas.style.cursor = "none";
+    this.canvas = canvas;
 
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);
@@ -19,15 +19,19 @@ export class InputSystem {
     });
 
     canvas.addEventListener("click", () => {
-      this._clicked = true;
+      if (!this.locked) {
+        canvas.requestPointerLock();
+      } else {
+        this._clicked = true;
+      }
     });
 
-    canvas.addEventListener("mouseenter", () => { this.mouseOver = true; });
-    canvas.addEventListener("mouseleave", () => { this.mouseOver = false; });
+    document.addEventListener("pointerlockchange", () => {
+      this.locked = document.pointerLockElement === canvas;
+    });
 
-    // Use movementX/Y from regular mousemove — no pointer lock needed
-    canvas.addEventListener("mousemove", (e) => {
-      if (this.mouseOver) {
+    document.addEventListener("mousemove", (e) => {
+      if (this.locked) {
         this._mouseDX += e.movementX;
         this._mouseDY += e.movementY;
       }
@@ -75,6 +79,10 @@ export class InputSystem {
 
   isKeyDown(code: string): boolean {
     return this.keys.has(code);
+  }
+
+  get isLocked(): boolean {
+    return this.locked;
   }
 
   endFrame() {
