@@ -19,8 +19,11 @@ export class PlayerSystem {
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
 
+    // Mouse look + arrow key rotation
     const mouse = input.consumeMouse();
-    if (mouse.dx !== 0) this.rotate(mouse.dx * MOUSE_SENSITIVITY);
+    const keyRot = input.keyRotation;
+    const totalRot = mouse.dx * MOUSE_SENSITIVITY + keyRot * 2.5 * dt;
+    if (totalRot !== 0) this.rotate(totalRot);
     this.pitch -= mouse.dy * 1.5;
     this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
 

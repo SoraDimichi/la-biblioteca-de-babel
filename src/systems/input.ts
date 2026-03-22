@@ -51,6 +51,13 @@ export class InputSystem {
     return v;
   }
 
+  get keyRotation(): number {
+    let v = 0;
+    if (this.keys.has("ArrowLeft")) v += 1;
+    if (this.keys.has("ArrowRight")) v -= 1;
+    return v;
+  }
+
   consumeMouse(): { dx: number; dy: number } {
     const dx = this._mouseDX;
     const dy = this._mouseDY;

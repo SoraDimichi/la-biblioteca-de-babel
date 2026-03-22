@@ -77,7 +77,7 @@ function raySegIntersect(
 }
 
 // Spiral: height per floor
-const FLOOR_H = 5.0;
+const FLOOR_H = 3.0;
 const VISIBLE_FLOORS = 8; // how many floors above/below to render
 
 function getAngleFromCenter(px: number, py: number): number {
@@ -158,7 +158,7 @@ export class Renderer {
 
         // Wall strip: bottom and top in world units relative to player eye
         const wallBottom = relativeHeight;
-        const wallTop = relativeHeight + FLOOR_H * 0.9; // wall doesn't fill entire floor height (gap for ceiling)
+        const wallTop = relativeHeight + FLOOR_H * 0.95;
 
         // Project to screen Y
         const yBottom = Math.floor(h / 2 - wallBottom * scale + pitch);

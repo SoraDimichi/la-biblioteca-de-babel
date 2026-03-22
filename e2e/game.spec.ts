@@ -11,7 +11,6 @@ test.describe("Library of Babel", () => {
     await expect(canvas).toBeVisible();
     await page.screenshot({ path: "e2e/screenshots/01-initial.png" });
 
-    // Check canvas has varied pixel colors (not blank)
     const hasContent = await page.evaluate(() => {
       const c = document.querySelector("canvas");
       if (!c) return false;
@@ -27,47 +26,69 @@ test.describe("Library of Babel", () => {
     expect(hasContent).toBe(true);
   });
 
-  test("WASD movement changes player position", async ({ page }) => {
-    // Read initial position from HUD
-    await page.screenshot({ path: "e2e/screenshots/02-before-move.png" });
-
-    // Expose player position via window for testing
-    const posBefore = await page.evaluate(() => {
-      const c = document.querySelector("canvas");
-      if (!c) return null;
-      const ctx = c.getContext("2d");
-      if (!ctx) return null;
-      // Read the HUD text from the canvas - check pixel changes instead
-      return { time: Date.now() };
-    });
-
-    // Press W for movement (works without pointer lock)
+  test("walk around and take screenshots", async ({ page }) => {
+    // Walk forward
     await page.keyboard.down("KeyW");
-    await page.waitForTimeout(1500);
-    await page.keyboard.up("KeyW");
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: "e2e/screenshots/03-after-w.png" });
-
-    // Press A to strafe
-    await page.keyboard.down("KeyA");
     await page.waitForTimeout(800);
-    await page.keyboard.up("KeyA");
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: "e2e/screenshots/04-after-a.png" });
+    await page.keyboard.up("KeyW");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/02-after-w.png" });
 
-    // Press S to move backward
+    // Strafe right
+    await page.keyboard.down("KeyD");
+    await page.waitForTimeout(800);
+    await page.keyboard.up("KeyD");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/03-after-d.png" });
+
+    // Walk backward
     await page.keyboard.down("KeyS");
     await page.waitForTimeout(800);
     await page.keyboard.up("KeyS");
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: "e2e/screenshots/05-after-s.png" });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/04-after-s.png" });
 
-    // Arrow key rotation
-    await page.keyboard.down("ArrowRight");
+    // Strafe left
+    await page.keyboard.down("KeyA");
     await page.waitForTimeout(800);
+    await page.keyboard.up("KeyA");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/05-after-a.png" });
+
+    // Turn right (arrow)
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(600);
     await page.keyboard.up("ArrowRight");
-    await page.waitForTimeout(300);
-    await page.screenshot({ path: "e2e/screenshots/06-after-arrow-right.png" });
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/06-turn-right.png" });
+
+    // Turn more right
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(600);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/07-turn-right2.png" });
+
+    // Walk forward to wall
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(1500);
+    await page.keyboard.up("KeyW");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/08-at-wall.png" });
+
+    // Turn around
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(1200);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/09-turned-around.png" });
+
+    // Walk to opposite wall
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(1500);
+    await page.keyboard.up("KeyW");
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: "e2e/screenshots/10-opposite-wall.png" });
   });
 
   test("no console errors", async ({ page }) => {
