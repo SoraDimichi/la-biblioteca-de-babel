@@ -18,7 +18,7 @@ export class PlayerSystem {
     const moveSpeed = MOVE_SPEED * dt;
 
     const mouse = input.consumeMouse();
-    if (mouse.dx !== 0) this.rotate(-mouse.dx * MOUSE_SENSITIVITY);
+    if (mouse.dx !== 0) this.rotate(mouse.dx * MOUSE_SENSITIVITY);
     this.pitch -= mouse.dy * 1.5;
     this.pitch = Math.max(-RENDER_HEIGHT / 2, Math.min(RENDER_HEIGHT / 2, this.pitch));
 
