@@ -91,12 +91,10 @@ test.describe("Library of Babel", () => {
     await page.screenshot({ path: "e2e/screenshots/10-opposite-wall.png" });
   });
 
-  test("A/D and Escape keys don't crash the game", async ({ page }) => {
-    // Pointer lock can't activate in headless, so we can't open the book viewer.
-    // Instead verify A/D/Escape keys work without crashing (they strafe in game mode).
+  test("A/D strafe and Space don't crash the game", async ({ page }) => {
     await page.screenshot({ path: "e2e/screenshots/11-before-keys.png" });
 
-    // D = strafe right in game mode
+    // D = strafe right
     await page.keyboard.down("KeyD");
     await page.waitForTimeout(500);
     await page.keyboard.up("KeyD");
@@ -110,10 +108,10 @@ test.describe("Library of Babel", () => {
     await page.waitForTimeout(200);
     await page.screenshot({ path: "e2e/screenshots/13-after-a.png" });
 
-    // Escape should not crash
-    await page.keyboard.press("Escape");
+    // Space (close book key) should not crash in tower mode
+    await page.keyboard.press("Space");
     await page.waitForTimeout(300);
-    await page.screenshot({ path: "e2e/screenshots/14-after-escape.png" });
+    await page.screenshot({ path: "e2e/screenshots/14-after-space.png" });
 
     // Verify still rendering
     const ok = await page.evaluate(() => {
