@@ -12,9 +12,9 @@ export class BookViewer {
   private leftPage: HTMLPreElement;
   private rightPage: HTMLPreElement;
   private header: HTMLDivElement;
-  private hint: HTMLSpanElement;
-  private leftPageNum: HTMLSpanElement;
-  private rightPageNum: HTMLSpanElement;
+  private hint: HTMLDivElement;
+  private leftPageNum: HTMLDivElement;
+  private rightPageNum: HTMLDivElement;
 
   constructor() {
     this.overlay = document.createElement("div");
@@ -42,65 +42,88 @@ export class BookViewer {
     const pagesContainer = document.createElement("div");
     Object.assign(pagesContainer.style, {
       display: "flex",
-      gap: "2vw",
+      gap: "0",
       height: "calc(100% - 8vh)",
       overflow: "hidden",
     });
 
-    this.leftPage = document.createElement("pre");
-    this.rightPage = document.createElement("pre");
-
-    const pageStyle = {
-      flex: "1",
-      margin: "0",
+    const pageFont = {
       fontSize: "clamp(8px, 1.3vh, 14px)",
       lineHeight: "1.4",
-      overflow: "hidden",
-      whiteSpace: "pre-wrap" as const,
-      wordBreak: "break-all" as const,
-      borderRight: "",
     };
 
-    Object.assign(this.leftPage.style, {
-      ...pageStyle,
+    // Left page column
+    const leftCol = document.createElement("div");
+    Object.assign(leftCol.style, {
+      flex: "1",
+      display: "flex",
+      flexDirection: "column",
       borderRight: "1px solid #3a3020",
       paddingRight: "1vw",
     });
-    Object.assign(this.rightPage.style, {
-      ...pageStyle,
+    this.leftPage = document.createElement("pre");
+    Object.assign(this.leftPage.style, {
+      ...pageFont,
+      flex: "1",
+      margin: "0",
+      overflow: "hidden",
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-all",
+    });
+    this.leftPageNum = document.createElement("div");
+    Object.assign(this.leftPageNum.style, {
+      color: "#d4c5a9",
+      fontSize: "clamp(9px, 1.2vh, 14px)",
+      padding: "0.5vh 0",
+      textAlign: "left",
+    });
+    leftCol.appendChild(this.leftPage);
+    leftCol.appendChild(this.leftPageNum);
+
+    // Right page column
+    const rightCol = document.createElement("div");
+    Object.assign(rightCol.style, {
+      flex: "1",
+      display: "flex",
+      flexDirection: "column",
       paddingLeft: "1vw",
     });
+    this.rightPage = document.createElement("pre");
+    Object.assign(this.rightPage.style, {
+      ...pageFont,
+      flex: "1",
+      margin: "0",
+      overflow: "hidden",
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-all",
+    });
+    this.rightPageNum = document.createElement("div");
+    Object.assign(this.rightPageNum.style, {
+      color: "#d4c5a9",
+      fontSize: "clamp(9px, 1.2vh, 14px)",
+      padding: "0.5vh 0",
+      textAlign: "right",
+    });
+    rightCol.appendChild(this.rightPage);
+    rightCol.appendChild(this.rightPageNum);
 
-    pagesContainer.appendChild(this.leftPage);
-    pagesContainer.appendChild(this.rightPage);
+    pagesContainer.appendChild(leftCol);
+    pagesContainer.appendChild(rightCol);
     this.overlay.appendChild(pagesContainer);
 
-    const footer = document.createElement("div");
-    Object.assign(footer.style, {
+    this.hint = document.createElement("div");
+    Object.assign(this.hint.style, {
       position: "absolute",
-      bottom: "0",
+      bottom: "1vh",
       left: "0",
       right: "0",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "1.5vh 3vw",
+      textAlign: "center",
       color: "#d4c5a9",
-      fontSize: "clamp(10px, 1.4vh, 16px)",
-      fontFamily: "Georgia, 'Times New Roman', Times, serif",
+      fontSize: "clamp(9px, 1.2vh, 14px)",
+      opacity: "0.5",
     });
-
-    this.leftPageNum = document.createElement("span");
-    this.rightPageNum = document.createElement("span");
-
-    this.hint = document.createElement("span");
     this.hint.textContent = "A / D  flip pages  ·  Esc  close";
-    this.hint.style.opacity = "0.6";
-
-    footer.appendChild(this.leftPageNum);
-    footer.appendChild(this.hint);
-    footer.appendChild(this.rightPageNum);
-    this.overlay.appendChild(footer);
+    this.overlay.appendChild(this.hint);
 
     document.body.appendChild(this.overlay);
   }
