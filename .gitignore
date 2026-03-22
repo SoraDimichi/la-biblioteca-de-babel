@@ -1,0 +1,4 @@
+node_modules
+dist
+e2e/screenshots/*.png
+.claude/.ralph-loop.local.md

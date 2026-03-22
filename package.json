@@ -1,0 +1,26 @@
+{
+  "name": "la-biblioteca-de-babel",
+  "version": "1.0.0",
+  "description": "2.5D Library of Babel exploration game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vite build && vite preview --host 0.0.0.0 --port 5173 & sleep 2 && docker run --rm --network host -v $(pwd):/work -w /work mcr.microsoft.com/playwright:v1.52.0-noble npx playwright test; kill %1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pixi.js": "^8.17.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.1",
+    "vitest": "^4.1.0"
+  }
+}
