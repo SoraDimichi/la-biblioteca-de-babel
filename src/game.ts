@@ -6,6 +6,7 @@ import { BookViewer } from "@/ui/book-viewer";
 import { HUD } from "@/ui/hud";
 import { PerfMonitor } from "@/debug/perf-monitor";
 import { bookAddressFromWorldStep } from "@/generation/book-data";
+import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 export class Game {
   private input: InputSystem;
@@ -31,28 +32,18 @@ export class Game {
 
   update(dt: number) {
     this.perfMonitor.update();
-    this.hud.update(dt);
 
-    // Book viewer mode
     if (this.bookViewer.visible) {
-      if (this.input.wasJustPressed("Escape")) {
-        this.bookViewer.close();
-      }
-      if (this.input.wasJustPressed("ArrowRight")) {
-        this.bookViewer.flipPage(2);
-      }
-      if (this.input.wasJustPressed("ArrowLeft")) {
-        this.bookViewer.flipPage(-2);
-      }
+      if (this.input.wasJustPressed("Escape")) this.bookViewer.close();
+      if (this.input.wasJustPressed("ArrowRight")) this.bookViewer.flipPage(2);
+      if (this.input.wasJustPressed("ArrowLeft")) this.bookViewer.flipPage(-2);
       this.input.endFrame();
       return;
     }
 
-    // Exploration mode
     this.player.update(dt, this.input);
     this.world.update(0);
 
-    // Click picks the book under cursor
     if (this.input.consumeClick()) {
       const hit = this.renderer.bookUnderCrosshair;
       if (hit) {
@@ -70,13 +61,18 @@ export class Game {
       return;
     }
 
-    this.renderer.render(
-      this.player,
-      this.world,
-      this.input.mouseRenderX,
-      this.input.mouseRenderY
-    );
+    this.renderer.render(this.player, this.world);
     this.hud.render(this.ctx, this.player);
     this.perfMonitor.render(this.ctx, this.world.cacheSize);
+
+    if (!this.input.isLocked) {
+      this.ctx.fillStyle = "rgba(10,10,15,0.6)";
+      this.ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+      this.ctx.fillStyle = "#d4c5a9";
+      this.ctx.font = "16px monospace";
+      this.ctx.fillText("Click to enter the Library", RENDER_WIDTH / 2 - 110, RENDER_HEIGHT / 2);
+      this.ctx.font = "11px monospace";
+      this.ctx.fillText("WASD move · Mouse look · Click book · Esc exit", RENDER_WIDTH / 2 - 150, RENDER_HEIGHT / 2 + 24);
+    }
   }
 }
