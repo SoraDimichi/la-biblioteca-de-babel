@@ -6,9 +6,7 @@ import { BookViewer } from "@/ui/book-viewer";
 import { HUD } from "@/ui/hud";
 import { PerfMonitor } from "@/debug/perf-monitor";
 import { bookAddressFromWorldStep } from "@/generation/book-data";
-import { RENDER_WIDTH, RENDER_HEIGHT, SHELVES_PER_WALL, BOOKS_PER_SHELF, VIEW_DISTANCE } from "@/config";
-import { WALL_SCREEN_X, WALL_SCREEN_WIDTH } from "@/rendering/wall-renderer";
-import { HORIZON } from "@/config";
+import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 export class Game {
   private input: InputSystem;
@@ -55,11 +53,12 @@ export class Game {
     this.player.update(dt, this.input);
     this.world.update(this.player.position);
 
-    // Book selection via click
+    // Click picks the book under the crosshair
     if (this.input.consumeClick()) {
-      const bookAddr = this.pickBook();
-      if (bookAddr) {
-        this.bookViewer.open(bookAddr);
+      const hit = this.renderer.bookUnderCrosshair;
+      if (hit) {
+        const addr = bookAddressFromWorldStep(hit.worldStep, hit.shelf, hit.slot);
+        this.bookViewer.open(addr);
       }
     }
 
@@ -75,23 +74,16 @@ export class Game {
     this.renderer.render(this.player, this.world);
     this.hud.render(this.ctx, this.player);
     this.perfMonitor.render(this.ctx, this.world.cacheSize);
-  }
 
-  private pickBook(): ReturnType<typeof bookAddressFromWorldStep> | null {
-    // Map mouse position to a book on the wall
-    const mx = this.input.mouseScreenX;
-    const my = this.input.mouseScreenY;
-
-    // Simple hit test: if clicking on the wall area, pick a book
-    // The wall occupies the right portion of the screen
-    const displayCanvas = this.ctx.canvas.parentElement?.querySelector("canvas");
-    if (!displayCanvas) return null;
-
-    // Approximate: pick the nearest step (step 0-2 ahead)
-    const worldStep = Math.floor(this.player.position) + 1;
-    const shelf = Math.floor(Math.random() * SHELVES_PER_WALL);
-    const slot = Math.floor(Math.random() * BOOKS_PER_SHELF);
-
-    return bookAddressFromWorldStep(worldStep, shelf, slot);
+    // Show "click to start" prompt if pointer not locked
+    if (!this.input.isLocked) {
+      this.ctx.fillStyle = "rgba(10,10,15,0.7)";
+      this.ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
+      this.ctx.fillStyle = "#d4c5a9";
+      this.ctx.font = "8px monospace";
+      this.ctx.fillText("Click to enter the Library", RENDER_WIDTH / 2 - 52, RENDER_HEIGHT / 2);
+      this.ctx.font = "5px monospace";
+      this.ctx.fillText("WASD move · Mouse look · Click book to read", RENDER_WIDTH / 2 - 68, RENDER_HEIGHT / 2 + 14);
+    }
   }
 }

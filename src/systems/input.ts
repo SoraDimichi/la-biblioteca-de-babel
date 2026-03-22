@@ -1,14 +1,12 @@
 export class InputSystem {
   private keys = new Set<string>();
   private justPressed = new Set<string>();
-  private mouseX = 0;
-  private mouseY = 0;
   private _clicked = false;
-  private canvasRect: DOMRect;
+  private mouseDeltaX = 0;
+  private mouseDeltaY = 0;
+  private locked = false;
 
   constructor(private canvas: HTMLCanvasElement) {
-    this.canvasRect = canvas.getBoundingClientRect();
-
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) {
         this.justPressed.add(e.code);
@@ -18,13 +16,24 @@ export class InputSystem {
     window.addEventListener("keyup", (e) => {
       this.keys.delete(e.code);
     });
-    canvas.addEventListener("mousemove", (e) => {
-      this.canvasRect = canvas.getBoundingClientRect();
-      this.mouseX = e.clientX - this.canvasRect.left;
-      this.mouseY = e.clientY - this.canvasRect.top;
-    });
+
+    // Pointer lock for FPS mouse look
     canvas.addEventListener("click", () => {
-      this._clicked = true;
+      if (!this.locked) {
+        canvas.requestPointerLock();
+      } else {
+        this._clicked = true;
+      }
+    });
+
+    document.addEventListener("pointerlockchange", () => {
+      this.locked = document.pointerLockElement === canvas;
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!this.locked) return;
+      this.mouseDeltaX += e.movementX;
+      this.mouseDeltaY += e.movementY;
     });
   }
 
@@ -35,17 +44,19 @@ export class InputSystem {
     return v;
   }
 
-  get mouseNormX(): number {
-    if (this.canvasRect.width === 0) return 0;
-    return (this.mouseX / this.canvasRect.width) * 2 - 1; // -1 to 1
+  get strafe(): number {
+    let v = 0;
+    if (this.keys.has("KeyD")) v += 1;
+    if (this.keys.has("KeyA")) v -= 1;
+    return v;
   }
 
-  get mouseScreenX(): number {
-    return this.mouseX;
-  }
-
-  get mouseScreenY(): number {
-    return this.mouseY;
+  consumeMouseDelta(): { dx: number; dy: number } {
+    const dx = this.mouseDeltaX;
+    const dy = this.mouseDeltaY;
+    this.mouseDeltaX = 0;
+    this.mouseDeltaY = 0;
+    return { dx, dy };
   }
 
   consumeClick(): boolean {
@@ -60,6 +71,10 @@ export class InputSystem {
 
   isKeyDown(code: string): boolean {
     return this.keys.has(code);
+  }
+
+  get isLocked(): boolean {
+    return this.locked;
   }
 
   endFrame() {

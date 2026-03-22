@@ -1,66 +1,74 @@
 import {
   RENDER_WIDTH,
-  RENDER_HEIGHT,
-  HORIZON,
   COLOR_WALL,
   COLOR_SHELF,
   PLAYER_HEIGHT,
   VIEW_DISTANCE,
   SHELVES_PER_WALL,
-  BOOKS_PER_SHELF,
   BOOK_SPINE_COLORS,
+  STEPS_PER_FLOOR,
 } from "@/config";
 import type { PlayerSystem } from "@/systems/player";
 import type { WorldGenerator } from "@/generation/world-generator";
 import { applyFog } from "@/rendering/fog";
-import { RAILING_SCREEN_X } from "@/rendering/void-renderer";
+import { BASE_RAILING_X } from "@/rendering/void-renderer";
 
-// The wall fills from railing to right edge
-const WALL_START_X = RAILING_SCREEN_X + 2;
-const CORRIDOR_WIDTH = RENDER_WIDTH - WALL_START_X;
+export interface BookHit {
+  worldStep: number;
+  floor: number;
+  segment: number;
+  shelf: number;
+  slot: number;
+}
 
-// Wall occupies the right portion of the corridor
-const WALL_SCREEN_X = WALL_START_X + Math.floor(CORRIDOR_WIDTH * 0.45);
-const WALL_SCREEN_WIDTH = RENDER_WIDTH - WALL_SCREEN_X;
+// Wall base X position (shifts with angle)
+const WALL_MARGIN = 20; // gap between railing and wall
 
 export function renderWall(
   ctx: CanvasRenderingContext2D,
   player: PlayerSystem,
   world: WorldGenerator,
-  flicker: number
-) {
-  const horizonY = HORIZON + Math.round(player.headBob);
+  flicker: number,
+  angleShift: number,
+  horizonY: number,
+  crosshairX: number,
+  crosshairY: number
+): BookHit | null {
+  let hitBook: BookHit | null = null;
+
+  const wallBaseX = BASE_RAILING_X + WALL_MARGIN + angleShift;
 
   // Render wall strips from far to near (painter's algorithm)
-  for (let stepOffset = VIEW_DISTANCE; stepOffset >= -2; stepOffset--) {
+  for (let stepOffset = VIEW_DISTANCE; stepOffset >= -1; stepOffset--) {
     const worldStep = Math.floor(player.position) + stepOffset;
     const relativePos = worldStep - player.position;
 
-    if (relativePos < -1) continue;
-    if (relativePos > VIEW_DISTANCE) continue;
+    if (relativePos < -0.5 || relativePos > VIEW_DISTANCE) continue;
 
-    const distance = Math.max(0.5, relativePos);
+    const distance = Math.max(0.3, relativePos);
 
-    // Perspective projection for this strip
-    const stripHeight = Math.round((PLAYER_HEIGHT * 3) / distance);
-    const stripTop = horizonY - Math.round(stripHeight * 0.6);
-    const stripBottom = stripTop + stripHeight;
+    // Perspective: wall strip height and position
+    const stripHeight = Math.round((PLAYER_HEIGHT * 3.5) / distance);
+    const stripTop = horizonY - Math.round(stripHeight * 0.55);
+    const wallX = wallBaseX;
+    const wallWidth = Math.max(1, RENDER_WIDTH - wallX);
 
-    // Screen X position (strips further away are more centered)
-    const perspectiveShift = Math.round(player.lookOffset * 30 / distance);
+    if (wallX >= RENDER_WIDTH || wallX + wallWidth <= 0) continue;
 
     // Draw wall background
     const [wr, wg, wb] = applyFog(COLOR_WALL.r, COLOR_WALL.g, COLOR_WALL.b, distance, flicker);
     ctx.fillStyle = `rgb(${wr},${wg},${wb})`;
-    ctx.fillRect(WALL_SCREEN_X + perspectiveShift, stripTop, WALL_SCREEN_WIDTH, stripHeight);
+    ctx.fillRect(Math.max(0, wallX), stripTop, wallWidth, stripHeight);
 
-    // Wall edge line (perspective depth cue)
-    ctx.fillStyle = `rgb(${Math.round(wr * 0.6)},${Math.round(wg * 0.6)},${Math.round(wb * 0.6)})`;
-    ctx.fillRect(WALL_SCREEN_X + perspectiveShift, stripTop, 1, stripHeight);
+    // Wall edge line
+    if (wallX >= 0 && wallX < RENDER_WIDTH) {
+      ctx.fillStyle = `rgb(${Math.round(wr * 0.5)},${Math.round(wg * 0.5)},${Math.round(wb * 0.5)})`;
+      ctx.fillRect(wallX, stripTop, 1, stripHeight);
+    }
 
-    // Draw shelves and books
+    // Shelves and books
     const stepData = world.getStep(worldStep);
-    if (!stepData) continue;
+    if (!stepData || distance > 12) continue;
 
     const shelfSpacing = stripHeight / (SHELVES_PER_WALL + 1);
 
@@ -69,33 +77,56 @@ export function renderWall(
 
       // Shelf plank
       const [sr, sg, sb] = applyFog(COLOR_SHELF.r, COLOR_SHELF.g, COLOR_SHELF.b, distance, flicker);
+      const plankHeight = Math.max(1, Math.round(2 / distance));
       ctx.fillStyle = `rgb(${sr},${sg},${sb})`;
-      ctx.fillRect(WALL_SCREEN_X + perspectiveShift + 1, shelfY, WALL_SCREEN_WIDTH - 2, Math.max(1, Math.round(2 / distance)));
+      ctx.fillRect(Math.max(0, wallX + 1), shelfY, wallWidth - 2, plankHeight);
 
-      // Books between this shelf and the one above
+      // Books between shelves
       const bookAreaTop = s === 0 ? stripTop + 2 : Math.round(stripTop + shelfSpacing * s) + 2;
       const bookAreaBottom = shelfY - 1;
       const bookHeight = Math.max(1, bookAreaBottom - bookAreaTop);
 
-      if (bookHeight <= 0 || distance > 10) continue;
+      if (bookHeight <= 0 || distance > 8) continue;
 
       const shelfBooks = stepData.shelves[s];
       if (!shelfBooks) continue;
 
-      const bookAreaWidth = Math.max(1, WALL_SCREEN_WIDTH - 4);
-      let bookX = WALL_SCREEN_X + perspectiveShift + 2;
+      let bookX = Math.max(0, wallX + 2);
+      const bookXEnd = wallX + wallWidth - 2;
 
       for (let b = 0; b < shelfBooks.length; b++) {
         const book = shelfBooks[b];
         if (!book) continue;
 
-        const bookWidth = Math.max(1, Math.round(book.width / distance));
-        if (bookX + bookWidth > WALL_SCREEN_X + perspectiveShift + bookAreaWidth) break;
+        const bookWidth = Math.max(1, Math.round(book.width / Math.max(1, distance * 0.7)));
+        if (bookX + bookWidth > bookXEnd) break;
 
         const color = BOOK_SPINE_COLORS[book.colorIndex];
         if (!color) continue;
 
-        const [br, bg, bb] = applyFog(color[0]!, color[1]!, color[2]!, distance, flicker);
+        // Check if crosshair is on this book
+        const isUnderCrosshair =
+          crosshairX >= bookX &&
+          crosshairX < bookX + bookWidth &&
+          crosshairY >= bookAreaTop &&
+          crosshairY < bookAreaTop + bookHeight;
+
+        let br: number, bg: number, bb: number;
+        if (isUnderCrosshair) {
+          // Highlight: brighten the book
+          [br, bg, bb] = applyFog(
+            Math.min(255, color[0]! + 60),
+            Math.min(255, color[1]! + 60),
+            Math.min(255, color[2]! + 60),
+            distance, flicker
+          );
+          const floor = Math.floor(worldStep / STEPS_PER_FLOOR);
+          const segment = ((worldStep % STEPS_PER_FLOOR) + STEPS_PER_FLOOR) % STEPS_PER_FLOOR;
+          hitBook = { worldStep, floor, segment, shelf: s, slot: b };
+        } else {
+          [br, bg, bb] = applyFog(color[0]!, color[1]!, color[2]!, distance, flicker);
+        }
+
         ctx.fillStyle = `rgb(${br},${bg},${bb})`;
         ctx.fillRect(bookX, bookAreaTop, bookWidth, bookHeight);
 
@@ -103,6 +134,6 @@ export function renderWall(
       }
     }
   }
-}
 
-export { WALL_SCREEN_X, WALL_SCREEN_WIDTH };
+  return hitBook;
+}
