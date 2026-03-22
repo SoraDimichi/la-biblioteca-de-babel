@@ -12,7 +12,6 @@ export class BookViewer {
   private leftPage: HTMLPreElement;
   private rightPage: HTMLPreElement;
   private header: HTMLDivElement;
-  private hint: HTMLDivElement;
   private leftPageNum: HTMLDivElement;
   private rightPageNum: HTMLDivElement;
 
@@ -43,14 +42,12 @@ export class BookViewer {
     Object.assign(pagesContainer.style, {
       display: "flex",
       gap: "0",
-      height: "calc(100% - 8vh)",
+      height: "calc(100% - 10vh)",
       overflow: "hidden",
     });
 
-    const pageFont = {
-      fontSize: "clamp(8px, 1.3vh, 14px)",
-      lineHeight: "1.4",
-    };
+    const pageFont = "clamp(8px, 1.3vh, 14px)";
+    const numFont = "clamp(9px, 1.2vh, 14px)";
 
     // Left page column
     const leftCol = document.createElement("div");
@@ -60,23 +57,28 @@ export class BookViewer {
       flexDirection: "column",
       borderRight: "1px solid #3a3020",
       paddingRight: "1vw",
+      marginRight: "1vw",
     });
+
     this.leftPage = document.createElement("pre");
     Object.assign(this.leftPage.style, {
-      ...pageFont,
       flex: "1",
       margin: "0",
+      fontSize: pageFont,
+      lineHeight: "1.4",
       overflow: "hidden",
       whiteSpace: "pre-wrap",
       wordBreak: "break-all",
     });
+
     this.leftPageNum = document.createElement("div");
     Object.assign(this.leftPageNum.style, {
       color: "#d4c5a9",
-      fontSize: "clamp(9px, 1.2vh, 14px)",
-      padding: "0.5vh 0",
+      fontSize: numFont,
+      paddingTop: "0.8vh",
       textAlign: "left",
     });
+
     leftCol.appendChild(this.leftPage);
     leftCol.appendChild(this.leftPageNum);
 
@@ -86,24 +88,27 @@ export class BookViewer {
       flex: "1",
       display: "flex",
       flexDirection: "column",
-      paddingLeft: "1vw",
     });
+
     this.rightPage = document.createElement("pre");
     Object.assign(this.rightPage.style, {
-      ...pageFont,
       flex: "1",
       margin: "0",
+      fontSize: pageFont,
+      lineHeight: "1.4",
       overflow: "hidden",
       whiteSpace: "pre-wrap",
       wordBreak: "break-all",
     });
+
     this.rightPageNum = document.createElement("div");
     Object.assign(this.rightPageNum.style, {
       color: "#d4c5a9",
-      fontSize: "clamp(9px, 1.2vh, 14px)",
-      padding: "0.5vh 0",
+      fontSize: numFont,
+      paddingTop: "0.8vh",
       textAlign: "right",
     });
+
     rightCol.appendChild(this.rightPage);
     rightCol.appendChild(this.rightPageNum);
 
@@ -111,19 +116,20 @@ export class BookViewer {
     pagesContainer.appendChild(rightCol);
     this.overlay.appendChild(pagesContainer);
 
-    this.hint = document.createElement("div");
-    Object.assign(this.hint.style, {
+    // Controls hint at very bottom
+    const hint = document.createElement("div");
+    Object.assign(hint.style, {
       position: "absolute",
-      bottom: "1vh",
+      bottom: "1.5vh",
       left: "0",
       right: "0",
       textAlign: "center",
       color: "#d4c5a9",
       fontSize: "clamp(9px, 1.2vh, 14px)",
-      opacity: "0.5",
+      opacity: "0.4",
     });
-    this.hint.textContent = "A / D  flip pages  ·  Esc  close";
-    this.overlay.appendChild(this.hint);
+    hint.textContent = "A / D  flip pages  ·  Esc  close";
+    this.overlay.appendChild(hint);
 
     document.body.appendChild(this.overlay);
   }
@@ -167,6 +173,5 @@ export class BookViewer {
     }
   }
 
-  // No-op: rendering is done via DOM, not canvas
   render(_ctx: CanvasRenderingContext2D, _w: number, _h: number) {}
 }

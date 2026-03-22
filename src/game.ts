@@ -37,20 +37,14 @@ export class Game {
 
     if (this.input.wasJustPressed("F3")) this.perfMonitor.toggle();
 
-    // Book mode: A/D flip pages, Escape closes
     if (this.bookViewer.visible) {
-      // Always want re-lock while book is open (so Escape re-locks immediately)
-      this.input.requestLock();
-      if (this.input.wasJustPressed("Escape")) {
-        this.bookViewer.close();
-      }
+      if (this.input.wasJustPressed("Escape")) this.bookViewer.close();
       if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);
       if (this.input.wasJustPressed("KeyA")) this.bookViewer.flipPage(-2);
       this.input.endFrame();
       return;
     }
 
-    // Tower mode
     this.player.update(dt, this.input);
 
     if (this.input.consumeClick()) {
@@ -66,12 +60,8 @@ export class Game {
 
   render() {
     const { w, h } = this.getSize();
-    const ctx = this.ctx;
-
-    // Always render the tower (visible behind book overlay)
-    this.renderer.render(ctx, w, h, this.player, this.world, this.lastDt);
-    this.hud.render(ctx, w, h, this.player);
-    this.perfMonitor.render(ctx, w, h, this.world.cacheSize);
-
+    this.renderer.render(this.ctx, w, h, this.player, this.world, this.lastDt);
+    this.hud.render(this.ctx, w, h, this.player);
+    this.perfMonitor.render(this.ctx, w, h, this.world.cacheSize);
   }
 }

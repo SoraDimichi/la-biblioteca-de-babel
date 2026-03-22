@@ -4,42 +4,30 @@ export class InputSystem {
   private _clicked = false;
   private _mouseDX = 0;
   private _mouseDY = 0;
-  private locked = false;
-  private canvas: HTMLCanvasElement;
-  private wantLock = false;
+  private mouseOver = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
+    // Hide cursor over canvas
+    canvas.style.cursor = "none";
 
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);
       this.keys.add(e.code);
-
-      // When Escape is pressed and we want to keep pointer lock (e.g. closing a book),
-      // immediately re-request it. The keydown event counts as user activation.
-      if (e.code === "Escape" && this.wantLock) {
-        this.wantLock = false;
-        setTimeout(() => canvas.requestPointerLock(), 0);
-      }
     });
     window.addEventListener("keyup", (e) => {
       this.keys.delete(e.code);
     });
 
     canvas.addEventListener("click", () => {
-      if (!this.locked) {
-        canvas.requestPointerLock();
-      } else {
-        this._clicked = true;
-      }
+      this._clicked = true;
     });
 
-    document.addEventListener("pointerlockchange", () => {
-      this.locked = document.pointerLockElement === canvas;
-    });
+    canvas.addEventListener("mouseenter", () => { this.mouseOver = true; });
+    canvas.addEventListener("mouseleave", () => { this.mouseOver = false; });
 
-    document.addEventListener("mousemove", (e) => {
-      if (this.locked) {
+    // Use movementX/Y from regular mousemove — no pointer lock needed
+    canvas.addEventListener("mousemove", (e) => {
+      if (this.mouseOver) {
         this._mouseDX += e.movementX;
         this._mouseDY += e.movementY;
       }
@@ -87,15 +75,6 @@ export class InputSystem {
 
   isKeyDown(code: string): boolean {
     return this.keys.has(code);
-  }
-
-  get isLocked(): boolean {
-    return this.locked;
-  }
-
-  /** Schedule pointer lock re-acquisition on next mouse interaction */
-  requestLock() {
-    this.wantLock = true;
   }
 
   endFrame() {
