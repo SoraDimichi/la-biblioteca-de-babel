@@ -39,7 +39,7 @@ export class Game {
 
     // Book mode: A/D flip, Escape closes (browser also releases pointer lock)
     if (this.bookViewer.visible) {
-      if (this.input.wasJustPressed("Escape")) {
+      if (this.input.wasJustPressed("Space")) {
         this.bookViewer.close();
       }
       if (this.input.wasJustPressed("KeyD")) this.bookViewer.flipPage(2);

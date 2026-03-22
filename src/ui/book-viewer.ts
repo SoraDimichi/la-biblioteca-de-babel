@@ -131,7 +131,7 @@ export class BookViewer {
       fontSize: "clamp(9px, 1.2vh, 14px)",
       opacity: "0.4",
     });
-    hint.textContent = "A / D  flip pages  ·  Esc  close";
+    hint.textContent = "A / D  flip pages  ·  Space  close";
     this.overlay.appendChild(hint);
 
     document.body.appendChild(this.overlay);
