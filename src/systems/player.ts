@@ -6,9 +6,9 @@ const ROT_SPEED = 0.003; // mouse sensitivity
 const COLLISION_MARGIN = 0.3;
 
 export class PlayerSystem {
-  // Position on the 2D map
+  // Position on the 2D map — spawn in the corridor ring (radius ~10.5 from center)
   posX = 16;
-  posY = 16;
+  posY = 5.5;
 
   // Direction vector (unit vector pointing where player looks)
   dirX = -1;
