@@ -1,37 +1,26 @@
 import type { InputSystem } from "@/systems/input";
 import { MAP, MAP_SIZE } from "@/rendering/renderer";
 
-const MOVE_SPEED = 5.0;
-const ROT_SPEED = 0.003; // mouse sensitivity
-const COLLISION_MARGIN = 0.3;
+const MOVE_SPEED = 3.5;
+const ROT_SPEED = 2.5; // radians per second for keyboard rotation
 
 export class PlayerSystem {
-  // Position on the 2D map — spawn in the corridor ring (radius ~10.5 from center)
   posX = 16;
   posY = 5.5;
 
-  // Direction vector (unit vector pointing where player looks)
   dirX = -1;
   dirY = 0;
 
-  // Camera plane (perpendicular to dir, determines FOV)
-  // Length of planeY determines FOV: 0.66 ≈ 66 degree FOV
   planeX = 0;
   planeY = 0.66;
 
   update(dt: number, input: InputSystem) {
     const moveSpeed = MOVE_SPEED * dt;
 
-    // --- Keyboard rotation (arrow keys, always available) ---
-    let keyRot = 0;
-    if (input.isKeyDown("ArrowLeft")) keyRot += 1;
-    if (input.isKeyDown("ArrowRight")) keyRot -= 1;
-
-    // --- Mouse rotation (yaw, only when pointer locked) ---
-    const mouse = input.consumeMouseDelta();
-    const rotAngle = -mouse.dx * ROT_SPEED + keyRot * 2.5 * dt;
-
-    if (rotAngle !== 0) {
+    // --- Keyboard rotation (Q/E or arrow left/right) ---
+    const rotDir = input.rotateDir;
+    if (rotDir !== 0) {
+      const rotAngle = rotDir * ROT_SPEED * dt;
       const cos = Math.cos(rotAngle);
       const sin = Math.sin(rotAngle);
 
@@ -49,20 +38,17 @@ export class PlayerSystem {
     if (fwd !== 0) {
       const nx = this.posX + this.dirX * moveSpeed * fwd;
       const ny = this.posY + this.dirY * moveSpeed * fwd;
-
       if (this.canWalk(nx, this.posY)) this.posX = nx;
       if (this.canWalk(this.posX, ny)) this.posY = ny;
     }
 
-    // --- A/D: strafe left/right ---
+    // --- A/D: strafe ---
     const strafe = input.strafe;
     if (strafe !== 0) {
-      // Strafe direction is perpendicular to look direction
       const strafeX = -this.dirY;
       const strafeY = this.dirX;
       const nx = this.posX + strafeX * moveSpeed * 0.7 * strafe;
       const ny = this.posY + strafeY * moveSpeed * 0.7 * strafe;
-
       if (this.canWalk(nx, this.posY)) this.posX = nx;
       if (this.canWalk(this.posX, ny)) this.posY = ny;
     }
@@ -76,7 +62,7 @@ export class PlayerSystem {
   }
 
   get currentFloor(): number {
-    return 0; // single floor for now
+    return 0;
   }
 
   get positionInFloor(): number {

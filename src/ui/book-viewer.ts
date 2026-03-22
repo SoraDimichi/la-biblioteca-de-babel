@@ -37,25 +37,25 @@ export class BookViewer {
 
     const addr = this.bookAddress;
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "14px monospace";
+    ctx.font = "18px monospace";
     ctx.fillText(
       `Floor ${addr.floor} Seg ${addr.segment} — Shelf ${addr.shelf}, Book ${addr.slot}`,
-      20, 24
+      30, 34
     );
 
     ctx.fillStyle = "#8b7d6b";
-    ctx.font = "10px monospace";
+    ctx.font = "13px monospace";
 
     const leftPage = generatePage(this.bookSeed, this.currentPage);
     const leftLines = leftPage.split("\n");
-    const lineHeight = 9;
-    const startY = 44;
+    const lineHeight = 12;
+    const startY = 54;
     const maxLines = Math.min(leftLines.length, Math.floor((RENDER_HEIGHT - 60) / lineHeight));
 
     for (let i = 0; i < maxLines; i++) {
       const line = leftLines[i];
       if (!line) continue;
-      ctx.fillText(line.substring(0, 50), 20, startY + i * lineHeight);
+      ctx.fillText(line.substring(0, 55), 30, startY + i * lineHeight);
     }
 
     // Right page
@@ -66,21 +66,21 @@ export class BookViewer {
       for (let i = 0; i < maxLines; i++) {
         const line = rightLines[i];
         if (!line) continue;
-        ctx.fillText(line.substring(0, 50), RENDER_WIDTH / 2 + 10, startY + i * lineHeight);
+        ctx.fillText(line.substring(0, 55), RENDER_WIDTH / 2 + 15, startY + i * lineHeight);
       }
     }
 
     ctx.fillStyle = "#3a3020";
-    ctx.fillRect(RENDER_WIDTH / 2, 34, 1, RENDER_HEIGHT - 50);
+    ctx.fillRect(RENDER_WIDTH / 2, 44, 1, RENDER_HEIGHT - 60);
 
     ctx.fillStyle = "#d4c5a9";
-    ctx.font = "12px monospace";
+    ctx.font = "14px monospace";
     ctx.fillText(
       `${this.currentPage + 1}-${Math.min(this.currentPage + 2, PAGES_PER_BOOK)} / ${PAGES_PER_BOOK}`,
-      RENDER_WIDTH / 2 - 40, RENDER_HEIGHT - 10
+      RENDER_WIDTH / 2 - 50, RENDER_HEIGHT - 14
     );
 
-    ctx.font = "10px monospace";
-    ctx.fillText("← →  flip pages  ·  Esc  close", RENDER_WIDTH / 2 - 100, RENDER_HEIGHT - 26);
+    ctx.font = "12px monospace";
+    ctx.fillText("← →  flip pages  ·  Esc  close", RENDER_WIDTH / 2 - 120, RENDER_HEIGHT - 34);
   }
 }

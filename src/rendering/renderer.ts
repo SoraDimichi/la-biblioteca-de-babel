@@ -60,6 +60,8 @@ const CY = Math.floor(RENDER_HEIGHT / 2);
 export class Renderer {
   private flickerTime = 0;
   private flicker = 1.0;
+  private cursorX = CX;
+  private cursorY = CY;
   bookUnderCrosshair: BookHit | null = null;
 
   // Per-column data for book picking: which wall step and distance
@@ -74,7 +76,9 @@ export class Renderer {
 
   constructor(private ctx: CanvasRenderingContext2D) {}
 
-  render(player: PlayerSystem, world: WorldGenerator) {
+  render(player: PlayerSystem, world: WorldGenerator, mouseX = CX, mouseY = CY) {
+    this.cursorX = Math.round(mouseX);
+    this.cursorY = Math.round(mouseY);
     const ctx = this.ctx;
 
     this.flickerTime += 0.016;
@@ -176,8 +180,12 @@ export class Renderer {
 
     // Crosshair
     ctx.fillStyle = "rgba(212,197,169,0.5)";
-    ctx.fillRect(CX - 4, CY, 9, 1);
-    ctx.fillRect(CX, CY - 4, 1, 9);
+    // Cursor crosshair at mouse position
+    const cx = this.cursorX;
+    const cy = this.cursorY;
+    ctx.fillStyle = "rgba(212,197,169,0.5)";
+    ctx.fillRect(cx - 4, cy, 9, 1);
+    ctx.fillRect(cx, cy - 4, 1, 9);
 
     this.drawBookTooltip(ctx);
   }
@@ -254,7 +262,7 @@ export class Renderer {
         if (!color) continue;
 
         // Check if crosshair is on this book
-        const isHit = x === CX && CY >= bookTop && CY <= bookBot;
+        const isHit = x === this.cursorX && this.cursorY >= bookTop && this.cursorY <= bookBot;
 
         let drawColor: RGB;
         if (isHit) {
@@ -294,7 +302,7 @@ export class Renderer {
     if (!hit) return;
     ctx.fillStyle = "rgba(212,197,169,0.8)";
     ctx.font = "7px monospace";
-    ctx.fillText(`Floor ${hit.floor} · Shelf ${hit.shelf} · Book ${hit.slot}`, CX - 50, CY + 16);
+    ctx.fillText(`Floor ${hit.floor} · Shelf ${hit.shelf} · Book ${hit.slot}`, this.cursorX - 50, this.cursorY + 16);
   }
 }
 

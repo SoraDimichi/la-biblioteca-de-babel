@@ -1,10 +1,13 @@
+import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
+
 export class InputSystem {
   private keys = new Set<string>();
   private justPressed = new Set<string>();
   private _clicked = false;
-  private mouseDeltaX = 0;
-  private mouseDeltaY = 0;
-  private locked = false;
+
+  // Mouse position in render-canvas coordinates (0..RENDER_WIDTH, 0..RENDER_HEIGHT)
+  mouseRenderX = RENDER_WIDTH / 2;
+  mouseRenderY = RENDER_HEIGHT / 2;
 
   constructor(private canvas: HTMLCanvasElement) {
     window.addEventListener("keydown", (e) => {
@@ -17,23 +20,22 @@ export class InputSystem {
       this.keys.delete(e.code);
     });
 
-    // Pointer lock for FPS mouse look
+    canvas.addEventListener("mousemove", (e) => {
+      // Map display canvas mouse position to render canvas coordinates
+      const rect = canvas.getBoundingClientRect();
+      const scale = Math.min(
+        rect.width / RENDER_WIDTH,
+        rect.height / RENDER_HEIGHT
+      );
+      const offsetX = (rect.width - RENDER_WIDTH * scale) / 2;
+      const offsetY = (rect.height - RENDER_HEIGHT * scale) / 2;
+
+      this.mouseRenderX = (e.clientX - rect.left - offsetX) / scale;
+      this.mouseRenderY = (e.clientY - rect.top - offsetY) / scale;
+    });
+
     canvas.addEventListener("click", () => {
-      if (!this.locked) {
-        canvas.requestPointerLock();
-      } else {
-        this._clicked = true;
-      }
-    });
-
-    document.addEventListener("pointerlockchange", () => {
-      this.locked = document.pointerLockElement === canvas;
-    });
-
-    document.addEventListener("mousemove", (e) => {
-      if (!this.locked) return;
-      this.mouseDeltaX += e.movementX;
-      this.mouseDeltaY += e.movementY;
+      this._clicked = true;
     });
   }
 
@@ -51,12 +53,11 @@ export class InputSystem {
     return v;
   }
 
-  consumeMouseDelta(): { dx: number; dy: number } {
-    const dx = this.mouseDeltaX;
-    const dy = this.mouseDeltaY;
-    this.mouseDeltaX = 0;
-    this.mouseDeltaY = 0;
-    return { dx, dy };
+  get rotateDir(): number {
+    let v = 0;
+    if (this.keys.has("KeyQ") || this.keys.has("ArrowLeft")) v += 1;
+    if (this.keys.has("KeyE") || this.keys.has("ArrowRight")) v -= 1;
+    return v;
   }
 
   consumeClick(): boolean {
@@ -71,10 +72,6 @@ export class InputSystem {
 
   isKeyDown(code: string): boolean {
     return this.keys.has(code);
-  }
-
-  get isLocked(): boolean {
-    return this.locked;
   }
 
   endFrame() {

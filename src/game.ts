@@ -6,7 +6,6 @@ import { BookViewer } from "@/ui/book-viewer";
 import { HUD } from "@/ui/hud";
 import { PerfMonitor } from "@/debug/perf-monitor";
 import { bookAddressFromWorldStep } from "@/generation/book-data";
-import { RENDER_WIDTH, RENDER_HEIGHT } from "@/config";
 
 export class Game {
   private input: InputSystem;
@@ -53,7 +52,7 @@ export class Game {
     this.player.update(dt, this.input);
     this.world.update(0);
 
-    // Click picks the book under the crosshair
+    // Click picks the book under cursor
     if (this.input.consumeClick()) {
       const hit = this.renderer.bookUnderCrosshair;
       if (hit) {
@@ -71,19 +70,13 @@ export class Game {
       return;
     }
 
-    this.renderer.render(this.player, this.world);
+    this.renderer.render(
+      this.player,
+      this.world,
+      this.input.mouseRenderX,
+      this.input.mouseRenderY
+    );
     this.hud.render(this.ctx, this.player);
     this.perfMonitor.render(this.ctx, this.world.cacheSize);
-
-    // Show "click to start" prompt if pointer not locked
-    if (!this.input.isLocked) {
-      this.ctx.fillStyle = "rgba(10,10,15,0.7)";
-      this.ctx.fillRect(0, 0, RENDER_WIDTH, RENDER_HEIGHT);
-      this.ctx.fillStyle = "#d4c5a9";
-      this.ctx.font = "8px monospace";
-      this.ctx.fillText("Click to enter the Library", RENDER_WIDTH / 2 - 52, RENDER_HEIGHT / 2);
-      this.ctx.font = "5px monospace";
-      this.ctx.fillText("WASD move · Mouse look · Click book to read", RENDER_WIDTH / 2 - 68, RENDER_HEIGHT / 2 + 14);
-    }
   }
 }
